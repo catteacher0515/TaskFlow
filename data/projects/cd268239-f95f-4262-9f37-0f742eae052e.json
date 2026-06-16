@@ -1,0 +1,46 @@
+{
+  "id": "cd268239-f95f-4262-9f37-0f742eae052e",
+  "title": "测试任务",
+  "status": "active",
+  "templateId": "generic-task",
+  "templateSnapshot": {
+    "templateId": "generic-task",
+    "templateName": "通用任务",
+    "stages": [],
+    "slots": [],
+    "minimumActions": [
+      {
+        "id": "start-five-minutes",
+        "label": "先推进 5 分钟"
+      },
+      {
+        "id": "record-one-result",
+        "label": "记录一个结果"
+      }
+    ],
+    "warningRules": {
+      "parallelLimit": {
+        "useGlobalLimit": true
+      },
+      "stagnation": {
+        "daysWithoutActivity": 7
+      }
+    }
+  },
+  "recurrence": {
+    "kind": "none"
+  },
+  "stages": [],
+  "progressObjects": [],
+  "slots": [],
+  "createdAt": "2026-06-16T06:58:00.218Z",
+  "updatedAt": "2026-06-16T08:24:17.908Z",
+  "taskTree": {
+    "id": "cd268239-f95f-4262-9f37-0f742eae052e-root",
+    "title": "测试任务",
+    "status": "not_started",
+    "children": [],
+    "createdAt": "2026-06-16T06:58:00.218Z",
+    "updatedAt": "2026-06-16T08:24:17.794Z"
+  }
+}

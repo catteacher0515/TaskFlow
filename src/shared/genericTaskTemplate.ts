@@ -1,0 +1,21 @@
+import type { Template } from "./types";
+
+export const genericTaskTemplate = {
+  id: "generic-task",
+  name: "通用任务",
+  description: "适合没有固定候选池的普通任务。",
+  stages: [],
+  slots: [],
+  minimumActions: [
+    { id: "start-five-minutes", label: "先推进 5 分钟" },
+    { id: "record-one-result", label: "记录一个结果" }
+  ],
+  recurrence: {
+    supportedRules: ["none", "daily", "weekly", "monthly", "workdays", "custom_interval"],
+    defaultRule: { kind: "none" }
+  },
+  warningRules: {
+    parallelLimit: { useGlobalLimit: true },
+    stagnation: { daysWithoutActivity: 7 }
+  }
+} satisfies Template;

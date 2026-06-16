@@ -1,0 +1,67 @@
+{
+  "id": "a809ebe4-45b4-4aa0-bc6b-22b8d1c20461",
+  "title": "整理播客选题",
+  "status": "completed",
+  "templateId": "generic-task",
+  "templateSnapshot": {
+    "templateId": "generic-task",
+    "templateName": "通用任务",
+    "stages": [
+      {
+        "id": "clarify",
+        "name": "明确目标"
+      },
+      {
+        "id": "execute",
+        "name": "推进执行"
+      },
+      {
+        "id": "review",
+        "name": "复盘完成"
+      }
+    ],
+    "slots": [],
+    "minimumActions": [
+      {
+        "id": "start-five-minutes",
+        "label": "先推进 5 分钟"
+      },
+      {
+        "id": "record-one-result",
+        "label": "记录一个结果"
+      }
+    ],
+    "warningRules": {
+      "parallelLimit": {
+        "useGlobalLimit": true
+      },
+      "stagnation": {
+        "daysWithoutActivity": 7
+      }
+    }
+  },
+  "recurrence": {
+    "kind": "none"
+  },
+  "stages": [
+    {
+      "id": "clarify",
+      "name": "明确目标",
+      "status": "active"
+    },
+    {
+      "id": "execute",
+      "name": "推进执行",
+      "status": "not_started"
+    },
+    {
+      "id": "review",
+      "name": "复盘完成",
+      "status": "not_started"
+    }
+  ],
+  "progressObjects": [],
+  "slots": [],
+  "createdAt": "2026-06-16T06:53:18.979Z",
+  "updatedAt": "2026-06-16T06:55:08.936Z"
+}
