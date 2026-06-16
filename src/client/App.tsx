@@ -5,6 +5,7 @@ import {
   createProjectApi,
   fillSlotApi,
   fetchState,
+  reopenProjectApi,
   transitionProgressObjectApi,
   updateTaskStatusApi,
   updateProjectStatusApi
@@ -87,6 +88,10 @@ export function App() {
 
   function handleUpdateProjectStatus(projectId: string, status: ProjectStatus) {
     return runMutation(() => updateProjectStatusApi(projectId, status));
+  }
+
+  function handleReopenProject(projectId: string) {
+    return runMutation(() => reopenProjectApi(projectId));
   }
 
   async function handleCreateProject(input: Parameters<typeof createProjectApi>[0]) {
@@ -179,6 +184,7 @@ export function App() {
             onFillSlot={handleFillSlot}
             onTransitionProgressObject={handleTransitionProgressObject}
             onUpdateProjectStatus={handleUpdateProjectStatus}
+            onReopenProject={handleReopenProject}
             onAddTaskChild={handleAddTaskChild}
             onUpdateTaskStatus={handleUpdateTaskStatus}
           />

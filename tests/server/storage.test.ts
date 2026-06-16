@@ -89,6 +89,38 @@ describe("local file storage", () => {
     expect(state.activity).toEqual([activity]);
   });
 
+  it("filters revoked feedback from the derived app state while keeping the raw log intact", async () => {
+    const root = await makeRoot();
+    const effectiveActivity: ActivityEntry = {
+      id: "activity-1",
+      projectId: "project-1",
+      kind: "small",
+      type: "task_completed",
+      message: "任务完成：收集候选选题",
+      taskId: "task-1",
+      createdAt: "2026-06-16T09:10:00.000Z"
+    };
+    const revocation: ActivityEntry = {
+      id: "activity-revoke",
+      projectId: "project-1",
+      kind: "small",
+      type: "feedback_revoked",
+      message: "反馈撤销：收集候选选题",
+      taskId: "task-1",
+      revokedActivityId: "activity-1",
+      createdAt: "2026-06-16T09:11:00.000Z"
+    };
+
+    await appendActivity(root, effectiveActivity);
+    await appendActivity(root, revocation);
+    const state = await readState(root);
+    const rawLog = await readFile(path.join(dataDir(root), "activity-log.jsonl"), "utf8");
+
+    expect(state.activity).toEqual([]);
+    expect(rawLog).toContain('"id":"activity-1"');
+    expect(rawLog).toContain('"id":"activity-revoke"');
+  });
+
   it("persists active focus mode state", async () => {
     const root = await makeRoot();
     const focusMode: FocusModeState = {

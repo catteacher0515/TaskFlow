@@ -54,6 +54,7 @@ export function transitionTask(project: Project, input: TransitionTaskInput): { 
   let targetBefore: TaskNode | undefined;
   let nextFeedbackStatus: "completed" | "dropped" | undefined;
   let shouldCreateFeedback = false;
+  const shouldClearFeedback = input.nextStatus === "not_started";
 
   const result = updateTask(taskTree, input.taskId, (task, isRoot) => {
     targetBefore = task;
@@ -70,8 +71,8 @@ export function transitionTask(project: Project, input: TransitionTaskInput): { 
       ...task,
       status: input.nextStatus,
       children: isTerminal ? archiveUnhandled(task.children, input.now) : task.children,
-      feedbackRecordedAt: shouldCreateFeedback ? input.now : task.feedbackRecordedAt,
-      feedbackStatus: shouldCreateFeedback ? nextFeedbackStatus : task.feedbackStatus,
+      feedbackRecordedAt: shouldClearFeedback ? undefined : shouldCreateFeedback ? input.now : task.feedbackRecordedAt,
+      feedbackStatus: shouldClearFeedback ? undefined : shouldCreateFeedback ? nextFeedbackStatus : task.feedbackStatus,
       updatedAt: input.now
     };
   });

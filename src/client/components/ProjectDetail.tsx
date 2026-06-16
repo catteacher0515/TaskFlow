@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import type { Project, ProgressObjectInstance, ProjectStatus, TaskNode, TaskNodeStatus } from "../../shared/types";
 
@@ -8,9 +8,32 @@ interface ProjectDetailProps {
   onFillSlot?: (projectId: string, slotId: string, progressObjectId: string) => Promise<void>;
   onTransitionProgressObject?: (projectId: string, progressObjectId: string, nextStateId: string) => Promise<void>;
   onUpdateProjectStatus?: (projectId: string, status: ProjectStatus) => Promise<void>;
+  onReopenProject?: (projectId: string) => Promise<void>;
   onAddTaskChild?: (projectId: string, taskId: string, title: string) => Promise<void>;
   onUpdateTaskStatus?: (projectId: string, taskId: string, status: TaskNodeStatus) => Promise<void>;
 }
+
+interface TaskContextMenuState {
+  taskId: string;
+  x: number;
+  y: number;
+}
+
+const projectStatusLabels: Record<Exclude<ProjectStatus, "completed">, string> = {
+  not_started: "待开始",
+  active: "进行中",
+  paused: "暂停"
+};
+
+const taskStatusLabels: Record<TaskNodeStatus, string> = {
+  not_started: "未开始",
+  active: "进行中",
+  completed: "完成",
+  dropped: "不做了",
+  unhandled: "未处理"
+};
+
+const closedTaskStatuses = new Set<TaskNodeStatus>(["completed", "dropped", "unhandled"]);
 
 function findProgressObject(objects: ProgressObjectInstance[], progressObjectId?: string) {
   if (!progressObjectId) {
@@ -18,6 +41,25 @@ function findProgressObject(objects: ProgressObjectInstance[], progressObjectId?
   }
 
   return objects.find((object) => object.id === progressObjectId);
+}
+
+function findTaskNode(node: TaskNode, taskId?: string): TaskNode | undefined {
+  if (!taskId) {
+    return undefined;
+  }
+
+  if (node.id === taskId) {
+    return node;
+  }
+
+  for (const child of node.children) {
+    const found = findTaskNode(child, taskId);
+    if (found) {
+      return found;
+    }
+  }
+
+  return undefined;
 }
 
 function renderSlotValue(objects: ProgressObjectInstance[], progressObjectId?: string) {
@@ -41,15 +83,13 @@ function nextStatusAction(status: ProjectStatus) {
   return undefined;
 }
 
-const taskStatusLabels: Record<TaskNodeStatus, string> = {
-  not_started: "未开始",
-  active: "进行中",
-  completed: "完成",
-  dropped: "不做了",
-  unhandled: "未处理"
-};
+function reopenProjectLabel(status?: Exclude<ProjectStatus, "completed">) {
+  if (!status) {
+    return "恢复项目";
+  }
 
-const closedTaskStatuses = new Set<TaskNodeStatus>(["completed", "dropped", "unhandled"]);
+  return `恢复为${projectStatusLabels[status]}`;
+}
 
 function countTaskChildren(task: TaskNode) {
   const total = task.children.length;
@@ -61,12 +101,41 @@ function hasOpenDescendants(task: TaskNode): boolean {
   return task.children.some((child) => !closedTaskStatuses.has(child.status) || hasOpenDescendants(child));
 }
 
+function playCompletionTone() {
+  const AudioContextClass =
+    globalThis.AudioContext ??
+    (globalThis as typeof globalThis & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+
+  if (!AudioContextClass) {
+    return;
+  }
+
+  try {
+    const context = new AudioContextClass();
+    const oscillator = context.createOscillator();
+    const gain = context.createGain();
+
+    oscillator.type = "sine";
+    oscillator.frequency?.setValueAtTime?.(880, context.currentTime);
+    oscillator.connect(gain);
+    gain.connect(context.destination);
+    gain.gain?.setValueAtTime?.(0.0001, context.currentTime);
+    gain.gain?.linearRampToValueAtTime?.(0.12, context.currentTime + 0.01);
+    gain.gain?.linearRampToValueAtTime?.(0.0001, context.currentTime + 0.18);
+    oscillator.start(context.currentTime);
+    oscillator.stop(context.currentTime + 0.18);
+  } catch {
+    // Ignore audio capability failures and keep the task mutation successful.
+  }
+}
+
 export function ProjectDetail({
   project,
   onCreateProgressObject,
   onFillSlot,
   onTransitionProgressObject,
   onUpdateProjectStatus,
+  onReopenProject,
   onAddTaskChild,
   onUpdateTaskStatus
 }: ProjectDetailProps) {
@@ -74,6 +143,36 @@ export function ProjectDetail({
   const [progressObjectUrl, setProgressObjectUrl] = useState("");
   const [slotSelections, setSlotSelections] = useState<Record<string, string>>({});
   const [taskTitles, setTaskTitles] = useState<Record<string, string>>({});
+  const [taskContextMenu, setTaskContextMenu] = useState<TaskContextMenuState | undefined>();
+
+  useEffect(() => {
+    if (!taskContextMenu) {
+      return undefined;
+    }
+
+    function handlePointerDown(event: PointerEvent) {
+      const target = event.target;
+      if (target instanceof HTMLElement && target.closest(".task-context-menu")) {
+        return;
+      }
+
+      setTaskContextMenu(undefined);
+    }
+
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setTaskContextMenu(undefined);
+      }
+    }
+
+    window.addEventListener("pointerdown", handlePointerDown);
+    window.addEventListener("keydown", handleEscape);
+
+    return () => {
+      window.removeEventListener("pointerdown", handlePointerDown);
+      window.removeEventListener("keydown", handleEscape);
+    };
+  }, [taskContextMenu]);
 
   if (!project) {
     return (
@@ -92,14 +191,12 @@ export function ProjectDetail({
   const stateNameById = new Map(progressObjectStates.map((state) => [state.id, state.name]));
   const statusAction = nextStatusAction(project.status);
   const canCreateProgressObject = Boolean(project.templateSnapshot.progressObject && onCreateProgressObject);
-  const openProgressObjects = project.progressObjects.filter((object) => {
-    const state = progressObjectStates.find((item) => item.id === object.stateId);
-    return state?.category !== "concluded";
-  });
   const fillableProgressObjects = project.progressObjects.filter((object) => {
     const state = progressObjectStates.find((item) => item.id === object.stateId);
     return state?.category === "concluded";
   });
+  const rootTask = project.taskTree;
+  const contextTask = rootTask ? findTaskNode(rootTask, taskContextMenu?.taskId) : undefined;
 
   async function handleCreateProgressObject(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -143,7 +240,7 @@ export function ProjectDetail({
     setTaskTitles((current) => ({ ...current, [taskId]: "" }));
   }
 
-  async function handleTaskStatus(task: TaskNode, status: TaskNodeStatus) {
+  async function handleTaskStatus(task: TaskNode, status: TaskNodeStatus, options?: { playSound?: boolean }) {
     if (!onUpdateTaskStatus) {
       return;
     }
@@ -157,43 +254,73 @@ export function ProjectDetail({
     }
 
     await onUpdateTaskStatus(projectId, task.id, status);
+    setTaskContextMenu(undefined);
+
+    if (status === "completed" && options?.playSound) {
+      playCompletionTone();
+    }
   }
 
-  function renderTaskNode(task: TaskNode, depth: number) {
+  async function handleTaskCheckbox(task: TaskNode, checked: boolean) {
+    if (checked) {
+      await handleTaskStatus(task, "completed", { playSound: true });
+      return;
+    }
+
+    if (task.status === "completed") {
+      await handleTaskStatus(task, "not_started");
+    }
+  }
+
+  function renderTaskNode(task: TaskNode, depth: number): JSX.Element {
     const progress = countTaskChildren(task);
-    const canAddChild = depth < 3 && !closedTaskStatuses.has(task.status) && Boolean(onAddTaskChild);
-    const canMutate = !closedTaskStatuses.has(task.status) && Boolean(onUpdateTaskStatus);
+    const isClosed = closedTaskStatuses.has(task.status);
+    const isChecked = task.status === "completed";
+    const canAddChild = depth < 3 && !isClosed && Boolean(onAddTaskChild);
+    const canStart = task.status === "not_started" && Boolean(onUpdateTaskStatus);
+    const canToggleCheckbox = Boolean(onUpdateTaskStatus) && task.status !== "dropped" && task.status !== "unhandled";
 
     return (
       <li className={`task-node depth-${depth}`} key={task.id}>
-        <article className="task-card">
-          <div className="task-card-header">
-            <div>
-              <strong>{task.title}</strong>
+        <article
+          className={`task-card todo-card${isChecked ? " completed" : ""}${task.status === "dropped" ? " dropped" : ""}`}
+          onContextMenu={(event) => {
+            event.preventDefault();
+            setTaskContextMenu({ taskId: task.id, x: event.clientX, y: event.clientY });
+          }}
+        >
+          <div className="todo-line">
+            <label className={`todo-check${isChecked ? " checked" : ""}${!canToggleCheckbox ? " disabled" : ""}`}>
+              <input
+                aria-label={task.title}
+                checked={isChecked}
+                disabled={!canToggleCheckbox}
+                type="checkbox"
+                onChange={(event) => void handleTaskCheckbox(task, event.target.checked)}
+              />
+              <span className="todo-title">{task.title}</span>
+            </label>
+
+            <div className="todo-meta">
               {progress.total > 0 ? (
                 <span className="task-progress">
                   子任务 {progress.closed} / {progress.total}
                 </span>
               ) : null}
-            </div>
-            <span className={`task-status status-${task.status}`}>{taskStatusLabels[task.status]}</span>
-          </div>
-
-          {canMutate ? (
-            <div className="task-actions">
-              {task.status !== "active" ? (
-                <button className="secondary-action compact" type="button" onClick={() => handleTaskStatus(task, "active")}>
-                  开始：{task.title}
+              {canStart ? (
+                <button
+                  className="text-action task-start"
+                  type="button"
+                  onClick={() => void handleTaskStatus(task, "active")}
+                >
+                  开始
                 </button>
               ) : null}
-              <button className="secondary-action compact" type="button" onClick={() => handleTaskStatus(task, "completed")}>
-                完成：{task.title}
-              </button>
-              <button className="secondary-action compact" type="button" onClick={() => handleTaskStatus(task, "dropped")}>
-                不做了：{task.title}
-              </button>
+              {task.status !== "not_started" && task.status !== "completed" ? (
+                <span className={`task-status status-${task.status}`}>{taskStatusLabels[task.status]}</span>
+              ) : null}
             </div>
-          ) : null}
+          </div>
 
           {canAddChild ? (
             <form className="task-add-form" onSubmit={(event) => handleAddTaskChild(event, task.id)}>
@@ -231,18 +358,22 @@ export function ProjectDetail({
         </span>
       </div>
 
-      {statusAction || project.status !== "completed" ? (
-        <div className="detail-actions" aria-label="项目操作">
-          {statusAction ? (
-            <button
-              className="primary-action"
-              type="button"
-              onClick={() => onUpdateProjectStatus?.(projectId, statusAction.nextStatus)}
-            >
-              {statusAction.label}
-            </button>
-          ) : null}
-          {project.status !== "completed" ? (
+      <div className="detail-actions" aria-label="项目操作">
+        {project.status === "completed" ? (
+          <button className="secondary-action" type="button" onClick={() => onReopenProject?.(projectId)}>
+            {reopenProjectLabel(project.completedFromStatus)}
+          </button>
+        ) : (
+          <>
+            {statusAction ? (
+              <button
+                className="primary-action"
+                type="button"
+                onClick={() => onUpdateProjectStatus?.(projectId, statusAction.nextStatus)}
+              >
+                {statusAction.label}
+              </button>
+            ) : null}
             <button
               className="secondary-action"
               type="button"
@@ -250,14 +381,52 @@ export function ProjectDetail({
             >
               标记完成
             </button>
-          ) : null}
-        </div>
-      ) : null}
+          </>
+        )}
+      </div>
 
-      {project.taskTree ? (
+      {rootTask ? (
         <section className="detail-section" aria-labelledby="task-tree-title">
           <h3 id="task-tree-title">任务拆解</h3>
-          <ol className="task-tree">{renderTaskNode(project.taskTree, 1)}</ol>
+
+          <form className="task-add-form root-task-form" onSubmit={(event) => handleAddTaskChild(event, rootTask.id)}>
+            <label>
+              <span>添加到{project.title}</span>
+              <input
+                value={taskTitles[rootTask.id] ?? ""}
+                onChange={(event) => setTaskTitles((current) => ({ ...current, [rootTask.id]: event.target.value }))}
+                placeholder="写下一个小任务"
+              />
+            </label>
+            <button className="primary-action compact" type="submit" disabled={!taskTitles[rootTask.id]?.trim()}>
+              添加小任务
+            </button>
+          </form>
+
+          {rootTask.children.length > 0 ? (
+            <ol className="task-tree">{rootTask.children.map((task) => renderTaskNode(task, 2))}</ol>
+          ) : (
+            <p className="empty-state">暂无任务，先添加一个小任务</p>
+          )}
+
+          {taskContextMenu && contextTask ? (
+            <div
+              className="task-context-menu"
+              role="menu"
+              style={{ left: taskContextMenu.x, top: taskContextMenu.y }}
+            >
+              {contextTask.status !== "dropped" && contextTask.status !== "unhandled" ? (
+                <button role="menuitem" type="button" onClick={() => void handleTaskStatus(contextTask, "dropped")}>
+                  不做了
+                </button>
+              ) : null}
+              {contextTask.status !== "not_started" ? (
+                <button role="menuitem" type="button" onClick={() => void handleTaskStatus(contextTask, "not_started")}>
+                  恢复为待办
+                </button>
+              ) : null}
+            </div>
+          ) : null}
         </section>
       ) : (
         <>
@@ -337,44 +506,40 @@ export function ProjectDetail({
             <h3 id="slots-title">成果槽位</h3>
             {project.slots.length > 0 ? (
               <div className="slot-grid">
-                {project.slots.map((slot) => {
-                  return (
-                    <article className="slot-card" key={slot.id}>
-                      <span className="slot-name">{slot.name}</span>
-                      <strong>{renderSlotValue(project.progressObjects, slot.progressObjectId)}</strong>
-                      {!slot.progressObjectId && onFillSlot ? (
-                        <div className="slot-controls">
-                          <label>
-                            <span>选择填入{slot.name} 的候选</span>
-                            <select
-                              value={slotSelections[slot.id] ?? ""}
-                              onChange={(event) =>
-                                setSlotSelections((current) => ({ ...current, [slot.id]: event.target.value }))
-                              }
-                            >
-                              <option value="">选择候选</option>
-                              {(fillableProgressObjects.length > 0 ? fillableProgressObjects : openProgressObjects).map(
-                                (object) => (
-                                  <option key={object.id} value={object.id}>
-                                    {object.title}
-                                  </option>
-                                )
-                              )}
-                            </select>
-                          </label>
-                          <button
-                            className="primary-action compact"
-                            type="button"
-                            disabled={!slotSelections[slot.id]}
-                            onClick={() => handleFillSlot(slot.id)}
+                {project.slots.map((slot) => (
+                  <article className="slot-card" key={slot.id}>
+                    <span className="slot-name">{slot.name}</span>
+                    <strong>{renderSlotValue(project.progressObjects, slot.progressObjectId)}</strong>
+                    {!slot.progressObjectId && onFillSlot ? (
+                      <div className="slot-controls">
+                        <label>
+                          <span>选择填入{slot.name} 的候选</span>
+                          <select
+                            value={slotSelections[slot.id] ?? ""}
+                            onChange={(event) =>
+                              setSlotSelections((current) => ({ ...current, [slot.id]: event.target.value }))
+                            }
                           >
-                            填入{slot.name}
-                          </button>
-                        </div>
-                      ) : null}
-                    </article>
-                  );
-                })}
+                            <option value="">选择候选</option>
+                            {fillableProgressObjects.map((object) => (
+                              <option key={object.id} value={object.id}>
+                                {object.title}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                        <button
+                          className="primary-action compact"
+                          type="button"
+                          disabled={!slotSelections[slot.id]}
+                          onClick={() => handleFillSlot(slot.id)}
+                        >
+                          填入{slot.name}
+                        </button>
+                      </div>
+                    ) : null}
+                  </article>
+                ))}
               </div>
             ) : (
               <p className="empty-state">暂无成果槽位</p>

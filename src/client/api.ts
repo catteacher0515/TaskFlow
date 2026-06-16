@@ -62,6 +62,13 @@ export function updateProjectStatusApi(projectId: string, status: ProjectStatus)
   });
 }
 
+export function reopenProjectApi(projectId: string): Promise<AppState> {
+  return request<AppState>(`/api/projects/${projectId}/reopen`, {
+    method: "POST",
+    body: JSON.stringify({})
+  });
+}
+
 export interface CreateProgressObjectPayload {
   title: string;
   fields: Record<string, string>;

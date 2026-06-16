@@ -151,4 +151,22 @@ describe("task tree", () => {
       ["child-open", "unhandled"]
     ]);
   });
+
+  it("restores a closed task to not started and clears its feedback marker", () => {
+    const completed = transition().project;
+    const restored = transition(completed, {
+      activityId: "activity-restore",
+      taskId: "task-1",
+      nextStatus: "not_started",
+      now: "2026-06-16T08:20:00.000Z"
+    }).project;
+    const task = restored.taskTree?.children[0];
+
+    expect(task).toMatchObject({
+      id: "task-1",
+      status: "not_started"
+    });
+    expect(task?.feedbackRecordedAt).toBeUndefined();
+    expect(task?.feedbackStatus).toBeUndefined();
+  });
 });

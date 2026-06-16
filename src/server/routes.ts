@@ -8,6 +8,7 @@ import {
 import { addTaskChild, transitionTask } from "../shared/taskTree";
 import { canMutateProject, completeFocusSession, selectFocusProject } from "../shared/focusMode";
 import { createProjectFromTemplate } from "../shared/projectFactory";
+import { reopenProject, setProjectStatus } from "../shared/projectStatus";
 import type {
   ActivityEntry,
   AppState,
@@ -78,11 +79,13 @@ export function registerRoutes(app: Express, deps: RouteDeps) {
   app.patch("/api/projects/:projectId/status", asyncRoute(async (req, res) => {
     const status = parseProjectStatus(req.body.status);
 
-    await mutateProject(deps, req.params.projectId, (project) => ({
-      ...project,
-      status,
-      updatedAt: deps.now()
-    }));
+    await mutateProject(deps, req.params.projectId, (project) => setProjectStatus(project, status, deps.now()));
+
+    res.json(await readStateWithWarnings(deps));
+  }));
+
+  app.post("/api/projects/:projectId/reopen", asyncRoute(async (req, res) => {
+    await mutateProject(deps, req.params.projectId, (project) => reopenProject(project, deps.now()));
 
     res.json(await readStateWithWarnings(deps));
   }));
@@ -116,20 +119,36 @@ export function registerRoutes(app: Express, deps: RouteDeps) {
   }));
 
   app.patch("/api/projects/:projectId/tasks/:taskId/status", asyncRoute(async (req, res) => {
-    let activity: ActivityEntry | undefined;
-    await mutateProject(deps, req.params.projectId, (project) => {
-      const result = transitionTask(project, {
-        activityId: deps.id(),
-        taskId: req.params.taskId,
-        nextStatus: parseTaskNodeStatus(req.body.status),
-        now: deps.now()
-      });
-      activity = result.activity;
-      return result.project;
+    const state = await readStateWithWarnings(deps);
+    const project = requireProject(state, req.params.projectId);
+    assertCanMutate(state, req.params.projectId);
+    const nextStatus = parseTaskNodeStatus(req.body.status);
+    const now = deps.now();
+    const result = transitionTask(project, {
+      activityId: deps.id(),
+      taskId: req.params.taskId,
+      nextStatus,
+      now
     });
 
-    if (activity) {
-      await appendActivity(deps.rootDir, activity);
+    await writeProject(deps.rootDir, result.project);
+
+    if (result.activity) {
+      await appendActivity(deps.rootDir, result.activity);
+    } else if (nextStatus === "not_started") {
+      const revokedActivity = findEffectiveTaskFeedback(state.activity, req.params.taskId);
+      if (revokedActivity) {
+        await appendActivity(deps.rootDir, {
+          id: deps.id(),
+          projectId: req.params.projectId,
+          kind: revokedActivity.kind,
+          type: "feedback_revoked",
+          message: `反馈撤销：${revokedActivity.message}`,
+          taskId: req.params.taskId,
+          revokedActivityId: revokedActivity.id,
+          createdAt: now
+        });
+      }
     }
 
     res.json(await readStateWithWarnings(deps));
@@ -252,6 +271,12 @@ function requireProject(state: AppState, projectId: string): Project {
   return project;
 }
 
+function findEffectiveTaskFeedback(activity: ActivityEntry[], taskId: string): ActivityEntry | undefined {
+  return [...activity]
+    .reverse()
+    .find((entry) => entry.taskId === taskId && (entry.type === "task_completed" || entry.type === "entropy_reduced"));
+}
+
 function assertCanMutate(state: AppState, projectId: string) {
   if (!canMutateProject(state.focusMode, projectId)) {
     throw new HttpError(409, `Focus mode only allows mutations on ${state.focusMode.selectedProjectId}`);
@@ -360,6 +385,7 @@ function mapDomainError(error: unknown): HttpError | undefined {
     error.message.startsWith("Next stage must follow completed stage:") ||
     error.message.startsWith("Next stage is not ready:") ||
     error.message.startsWith("Stage is not active:") ||
+    error.message.startsWith("Project is not completed:") ||
     error.message === "Project does not define a task tree" ||
     error.message === "No active focus session" ||
     error.message === "Focus mode requires at least one blocking warning" ||

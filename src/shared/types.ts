@@ -1,7 +1,14 @@
 export type ProjectStatus = "not_started" | "active" | "paused" | "completed";
 export type WarningType = "parallel_limit" | "deadline_risk" | "stagnation";
 export type FeedbackKind = "small" | "big";
-export type ActivityType = "progress_concluded" | "slot_filled" | "stage_completed" | "task_completed" | "entropy_reduced" | "project_completed";
+export type ActivityType =
+  | "progress_concluded"
+  | "slot_filled"
+  | "stage_completed"
+  | "task_completed"
+  | "entropy_reduced"
+  | "project_completed"
+  | "feedback_revoked";
 export type FocusSessionResult = "recorded" | "continued" | "blocked";
 export type TaskNodeStatus = "not_started" | "active" | "completed" | "dropped" | "unhandled";
 
@@ -119,6 +126,7 @@ export interface Project {
   id: string;
   title: string;
   status: ProjectStatus;
+  completedFromStatus?: Exclude<ProjectStatus, "completed">;
   templateId?: string;
   templateSnapshot: TemplateSnapshot;
   recurrence: RecurrenceRule;
@@ -142,6 +150,7 @@ export interface ActivityEntry {
   slotId?: string;
   stageId?: string;
   taskId?: string;
+  revokedActivityId?: string;
 }
 
 export interface Warning {

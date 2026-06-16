@@ -124,7 +124,13 @@ async function readActivity(filePath: string): Promise<ActivityEntry[]> {
     }
   });
 
-  return entries;
+  const revokedIds = new Set(
+    entries
+      .filter((entry) => entry.type === "feedback_revoked" && entry.revokedActivityId)
+      .map((entry) => entry.revokedActivityId as string)
+  );
+
+  return entries.filter((entry) => entry.type !== "feedback_revoked" && !revokedIds.has(entry.id));
 }
 
 function normalizeTemplate(template: Template): Template {

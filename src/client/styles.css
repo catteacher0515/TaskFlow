@@ -310,8 +310,44 @@ h3 {
 
 .project-list {
   display: grid;
-  gap: 6px;
+  gap: 10px;
   padding: 12px;
+}
+
+.project-group {
+  display: grid;
+  gap: 6px;
+}
+
+.project-group-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  border: 1px solid #e4dfd5;
+  border-radius: 8px;
+  padding: 8px 10px;
+  background: #faf8f2;
+  color: #394150;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.project-group-toggle:hover,
+.project-group-toggle:focus-visible {
+  border-color: #cfc7ba;
+  background: #f3efe5;
+  outline: none;
+}
+
+.project-group-count {
+  color: #66717f;
+  font-size: 12px;
+}
+
+.project-group-items {
+  display: grid;
+  gap: 6px;
 }
 
 .project-row {
@@ -659,6 +695,73 @@ h3 {
   background: #fffefa;
 }
 
+.root-task-form {
+  margin-bottom: 12px;
+}
+
+.todo-card.completed {
+  background: #f8f7f2;
+}
+
+.todo-card.completed .todo-title {
+  color: #66717f;
+  text-decoration: line-through;
+}
+
+.todo-card.dropped .todo-title {
+  color: #79530c;
+}
+
+.todo-line {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.todo-check {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  min-width: 0;
+  flex: 1 1 auto;
+  cursor: pointer;
+}
+
+.todo-check input {
+  width: 18px;
+  height: 18px;
+  margin: 2px 0 0;
+  accent-color: #4f6f75;
+}
+
+.todo-check.disabled {
+  cursor: default;
+}
+
+.todo-check.disabled input {
+  cursor: not-allowed;
+}
+
+.todo-title {
+  min-width: 0;
+  color: #18202f;
+  font-weight: 750;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.todo-meta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.task-start {
+  font-size: 12px;
+}
+
 .task-card-header {
   display: flex;
   gap: 12px;
@@ -725,6 +828,36 @@ h3 {
   font-size: 12px;
   font-weight: 750;
   overflow-wrap: anywhere;
+}
+
+.task-context-menu {
+  position: fixed;
+  z-index: 30;
+  display: grid;
+  gap: 4px;
+  min-width: 148px;
+  border: 1px solid #d8d2c7;
+  border-radius: 8px;
+  padding: 6px;
+  background: #fffefa;
+  box-shadow: 0 12px 28px rgba(24, 32, 47, 0.14);
+}
+
+.task-context-menu button {
+  border: 0;
+  border-radius: 6px;
+  padding: 8px 10px;
+  background: transparent;
+  color: #273142;
+  text-align: left;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.task-context-menu button:hover,
+.task-context-menu button:focus-visible {
+  background: #eef5f4;
+  outline: none;
 }
 
 .slot-grid {
@@ -917,6 +1050,14 @@ h3 {
 
   .project-row {
     grid-template-columns: 1fr;
+  }
+
+  .todo-line {
+    display: grid;
+  }
+
+  .todo-meta {
+    justify-content: flex-start;
   }
 
   .inline-form,

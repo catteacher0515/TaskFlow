@@ -235,6 +235,33 @@ describe("Express API routes", () => {
     expect(revisedResponse.body.activity).toHaveLength(1);
   });
 
+  it("revokes task feedback when a closed task is restored to not started", async () => {
+    const { app } = await makeFixture(["project-1", "task-1", "activity-1", "activity-revoke"]);
+    await request(app)
+      .post("/api/projects")
+      .send({ templateId: "generic-task", title: "整理播客选题", recurrence: { kind: "none" } })
+      .expect(201);
+    await request(app)
+      .post("/api/projects/project-1/tasks/project-1-root/children")
+      .send({ title: "收集候选选题" })
+      .expect(200);
+    await request(app)
+      .patch("/api/projects/project-1/tasks/task-1/status")
+      .send({ status: "completed" })
+      .expect(200);
+
+    const restoredResponse = await request(app)
+      .patch("/api/projects/project-1/tasks/task-1/status")
+      .send({ status: "not_started" })
+      .expect(200);
+
+    expect(restoredResponse.body.projects[0].taskTree.children[0]).toMatchObject({
+      id: "task-1",
+      status: "not_started"
+    });
+    expect(restoredResponse.body.activity).toEqual([]);
+  });
+
   it("enforces focus mode mutations and completes the focus session", async () => {
     const { app } = await makeFixture();
     await request(app)
@@ -292,6 +319,32 @@ describe("Express API routes", () => {
 
     const stateResponse = await request(app).get("/api/state").expect(200);
     expect(stateResponse.body.projects[0].status).toBe("not_started");
+  });
+
+  it("reopens a completed project to the status it had before completion", async () => {
+    const { app } = await makeFixture();
+    await request(app)
+      .post("/api/projects")
+      .send({ templateId: "weekly-github-picks", title: "Project 1", recurrence: { kind: "weekly" } })
+      .expect(201);
+    await request(app).patch("/api/projects/project-1/status").send({ status: "active" }).expect(200);
+
+    const completedResponse = await request(app)
+      .patch("/api/projects/project-1/status")
+      .send({ status: "completed" })
+      .expect(200);
+    expect(completedResponse.body.projects[0]).toMatchObject({
+      status: "completed",
+      completedFromStatus: "active"
+    });
+
+    const reopenedResponse = await request(app)
+      .post("/api/projects/project-1/reopen")
+      .send({})
+      .expect(200);
+
+    expect(reopenedResponse.body.projects[0].status).toBe("active");
+    expect(reopenedResponse.body.projects[0].completedFromStatus).toBeUndefined();
   });
 
   it("maps unknown progress object mutations to not found", async () => {

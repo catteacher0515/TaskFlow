@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "../../src/client/App";
@@ -250,6 +250,46 @@ describe("App", () => {
     expect(screen.getByText("推进对象：候选仓库")).toBeInTheDocument();
   });
 
+  it("groups projects by status and collapses completed projects by default", async () => {
+    const user = userEvent.setup();
+    mockState({
+      ...appState,
+      projects: [
+        appState.projects[0],
+        appState.projects[1],
+        {
+          ...appState.projects[1],
+          id: "project-3",
+          title: "待开始项目",
+          status: "not_started"
+        },
+        {
+          ...appState.projects[1],
+          id: "project-4",
+          title: "已完成项目",
+          status: "completed",
+          completedFromStatus: "active"
+        }
+      ]
+    });
+
+    render(<App />);
+
+    expect(await screen.findByRole("button", { name: "进行中 1" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "待开始 1" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "暂停 1" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "已完成 1" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /已完成项目/ })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "已完成 1" }));
+
+    expect(screen.getByRole("button", { name: /已完成项目/ })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "进行中 1" }));
+
+    expect(screen.queryByRole("button", { name: /每周 GitHub 精选 2026-W25/ })).not.toBeInTheDocument();
+  });
+
   it("opens a dedicated feedback page from the current panel", async () => {
     const user = userEvent.setup();
     mockState({
@@ -378,8 +418,60 @@ describe("App", () => {
     expect(await screen.findByRole("heading", { name: "整理播客选题" })).toBeInTheDocument();
   });
 
-  it("adds and closes generic task children from the detail panel", async () => {
+  it("reopens a completed project from the detail panel", async () => {
     const user = userEvent.setup();
+    const completedProject = {
+      ...appState.projects[0],
+      status: "completed" as const,
+      completedFromStatus: "active" as const
+    };
+    const reopenedProject = {
+      ...completedProject,
+      status: "active" as const,
+      completedFromStatus: undefined
+    };
+    const initialState = replaceProject(completedProject);
+    const nextState = replaceProject(reopenedProject);
+
+    globalThis.fetch = vi.fn(async (input) => {
+      const path = String(input);
+      return jsonResponse(path === "/api/state" ? initialState : nextState);
+    });
+
+    render(<App />);
+
+    await user.click(await screen.findByRole("button", { name: "恢复为进行中" }));
+
+    expect(fetch).toHaveBeenCalledWith(
+      "/api/projects/project-1/reopen",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({})
+      })
+    );
+    expect(await screen.findByRole("button", { name: "暂停项目" })).toBeInTheDocument();
+  });
+
+  it("adds and completes generic task children from the detail panel with a checkbox", async () => {
+    const user = userEvent.setup();
+    const audioNodes = {
+      connect: vi.fn(),
+      start: vi.fn(),
+      stop: vi.fn()
+    };
+    const audioContext = {
+      currentTime: 0,
+      destination: {},
+      createOscillator: vi.fn(() => audioNodes),
+      createGain: vi.fn(() => ({
+        connect: vi.fn(),
+        gain: {
+          setValueAtTime: vi.fn(),
+          linearRampToValueAtTime: vi.fn()
+        }
+      }))
+    };
+    vi.stubGlobal("AudioContext", vi.fn(() => audioContext));
     const genericProject = {
       ...appState.projects[1],
       id: "generic-project-1",
@@ -421,12 +513,19 @@ describe("App", () => {
         ]
       }
     };
-    const droppedProject = {
+    const completedProject = {
       ...projectWithChild,
       taskTree: {
         ...projectWithChild.taskTree,
         children: projectWithChild.taskTree.children.map((task) =>
-          task.id === "task-1" ? { ...task, status: "dropped" as const } : task
+          task.id === "task-1"
+            ? {
+                ...task,
+                status: "completed" as const,
+                feedbackRecordedAt: "2026-06-16T08:10:00.000Z",
+                feedbackStatus: "completed" as const
+              }
+            : task
         )
       }
     };
@@ -438,24 +537,24 @@ describe("App", () => {
       ...initialState,
       projects: [...appState.projects, projectWithChild]
     };
-    const droppedState = {
+    const completedState = {
       ...initialState,
-      projects: [...appState.projects, droppedProject],
+      projects: [...appState.projects, completedProject],
       activity: [
         ...appState.activity,
         {
-          id: "activity-drop",
+          id: "activity-complete",
           projectId: "generic-project-1",
           kind: "small" as const,
-          type: "entropy_reduced" as const,
-          message: "不做了：收集候选选题",
+          type: "task_completed" as const,
+          message: "任务完成：收集候选选题",
           taskId: "task-1",
           createdAt: "2026-06-16T08:10:00.000Z"
         }
       ]
     };
 
-    globalThis.fetch = vi.fn(async (input) => {
+    globalThis.fetch = vi.fn(async (input, init) => {
       const path = String(input);
       if (path === "/api/state") {
         return jsonResponse(initialState);
@@ -464,7 +563,8 @@ describe("App", () => {
         return jsonResponse(childState);
       }
       if (path.includes("/tasks/task-1/status")) {
-        return jsonResponse(droppedState);
+        const body = JSON.parse(String(init?.body ?? "{}"));
+        return jsonResponse(body.status === "completed" ? completedState : initialState);
       }
       return jsonResponse(initialState);
     });
@@ -484,7 +584,130 @@ describe("App", () => {
     );
     expect(await screen.findByText("收集候选选题")).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "不做了：收集候选选题" }));
+    await user.click(screen.getByRole("checkbox", { name: "收集候选选题" }));
+
+    expect(fetch).toHaveBeenCalledWith(
+      "/api/projects/generic-project-1/tasks/task-1/status",
+      expect.objectContaining({
+        method: "PATCH",
+        body: JSON.stringify({ status: "completed" })
+      })
+    );
+    expect(await screen.findByRole("checkbox", { name: "收集候选选题" })).toBeChecked();
+    expect(AudioContext).toHaveBeenCalledTimes(1);
+  });
+
+  it("drops and restores generic tasks from the context menu", async () => {
+    const user = userEvent.setup();
+    const genericProject = {
+      ...appState.projects[1],
+      id: "generic-project-1",
+      title: "整理播客选题",
+      templateId: "generic-task",
+      templateSnapshot: {
+        templateId: "generic-task",
+        templateName: "通用任务",
+        stages: [],
+        slots: [],
+        minimumActions: genericTemplate.minimumActions,
+        warningRules: genericTemplate.warningRules
+      },
+      stages: [],
+      progressObjects: [],
+      slots: [],
+      taskTree: {
+        id: "generic-project-1-root",
+        title: "整理播客选题",
+        status: "not_started" as const,
+        children: [
+          {
+            id: "task-1",
+            title: "收集候选选题",
+            status: "not_started" as const,
+            children: [],
+            createdAt: "2026-06-16T08:05:00.000Z",
+            updatedAt: "2026-06-16T08:05:00.000Z"
+          }
+        ],
+        createdAt: "2026-06-16T08:00:00.000Z",
+        updatedAt: "2026-06-16T08:00:00.000Z"
+      }
+    };
+    const droppedProject = {
+      ...genericProject,
+      taskTree: {
+        ...genericProject.taskTree,
+        children: genericProject.taskTree.children.map((task) =>
+          task.id === "task-1"
+            ? {
+                ...task,
+                status: "dropped" as const,
+                feedbackRecordedAt: "2026-06-16T08:10:00.000Z",
+                feedbackStatus: "dropped" as const
+              }
+            : task
+        )
+      }
+    };
+    const restoredProject = {
+      ...genericProject,
+      taskTree: {
+        ...genericProject.taskTree,
+        children: genericProject.taskTree.children.map((task) =>
+          task.id === "task-1"
+            ? {
+                ...task,
+                status: "not_started" as const,
+                feedbackRecordedAt: undefined,
+                feedbackStatus: undefined
+              }
+            : task
+        )
+      }
+    };
+    const initialState = {
+      ...appState,
+      projects: [...appState.projects, genericProject]
+    };
+    const droppedState = {
+      ...initialState,
+      projects: [...appState.projects, droppedProject],
+      activity: [
+        ...appState.activity,
+        {
+          id: "activity-drop",
+          projectId: "generic-project-1",
+          kind: "small" as const,
+          type: "entropy_reduced" as const,
+          message: "不做了：收集候选选题",
+          taskId: "task-1",
+          createdAt: "2026-06-16T08:10:00.000Z"
+        }
+      ]
+    };
+    const restoredState = {
+      ...initialState,
+      projects: [...appState.projects, restoredProject],
+      activity: [...appState.activity]
+    };
+
+    globalThis.fetch = vi.fn(async (input, init) => {
+      const path = String(input);
+      if (path === "/api/state") {
+        return jsonResponse(initialState);
+      }
+      if (path.includes("/tasks/task-1/status")) {
+        const body = JSON.parse(String(init?.body ?? "{}"));
+        return jsonResponse(body.status === "dropped" ? droppedState : restoredState);
+      }
+      return jsonResponse(initialState);
+    });
+
+    render(<App />);
+
+    await user.click(await screen.findByRole("button", { name: /整理播客选题/ }));
+    fireEvent.contextMenu(screen.getByText("收集候选选题"));
+    await user.click(screen.getByRole("menuitem", { name: "不做了" }));
 
     expect(fetch).toHaveBeenCalledWith(
       "/api/projects/generic-project-1/tasks/task-1/status",
@@ -494,6 +717,18 @@ describe("App", () => {
       })
     );
     expect(await screen.findByText("不做了")).toBeInTheDocument();
+
+    fireEvent.contextMenu(screen.getByText("收集候选选题"));
+    await user.click(screen.getByRole("menuitem", { name: "恢复为待办" }));
+
+    expect(fetch).toHaveBeenCalledWith(
+      "/api/projects/generic-project-1/tasks/task-1/status",
+      expect.objectContaining({
+        method: "PATCH",
+        body: JSON.stringify({ status: "not_started" })
+      })
+    );
+    expect(await screen.findByRole("checkbox", { name: "收集候选选题" })).not.toBeChecked();
   });
 
   it("shows templates on a dedicated template page", async () => {
