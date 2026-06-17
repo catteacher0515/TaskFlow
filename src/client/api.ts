@@ -162,3 +162,10 @@ export function hideProjectApi(projectId: string): Promise<AppState> {
     body: JSON.stringify({})
   });
 }
+
+export function revokeActivityApi(activityId: string): Promise<AppState> {
+  return request<AppState>(`/api/activity/${activityId}/revoke`, {
+    method: "POST",
+    body: JSON.stringify({})
+  });
+}

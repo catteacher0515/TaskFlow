@@ -1,7 +1,7 @@
 {
   "id": "0f895473-f24e-4743-8458-2628ce6faf04",
   "title": "测试任务 3.0",
-  "status": "active",
+  "status": "completed",
   "templateId": "generic-task",
   "templateSnapshot": {
     "templateId": "generic-task",
@@ -64,5 +64,7 @@
     "updatedAt": "2026-06-16T14:30:46.476Z"
   },
   "createdAt": "2026-06-16T14:30:34.735Z",
-  "updatedAt": "2026-06-17T01:33:33.063Z"
+  "updatedAt": "2026-06-17T09:46:35.993Z",
+  "completedFromStatus": "active",
+  "hiddenAt": "2026-06-17T09:46:35.993Z"
 }

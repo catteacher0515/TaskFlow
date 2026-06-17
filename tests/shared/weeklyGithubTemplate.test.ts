@@ -1,39 +1,23 @@
 import { describe, expect, it } from "vitest";
+import type { Template } from "../../src/shared/types";
 import { weeklyGithubTemplate } from "../../src/shared/weeklyGithubTemplate";
 
 describe("weeklyGithubTemplate", () => {
-  it("defines candidate repository states as template-local states", () => {
+  it("uses the weekly template id and keeps recurrence explicit", () => {
     expect(weeklyGithubTemplate.id).toBe("weekly-github-picks");
-    expect(weeklyGithubTemplate.progressObject.name).toBe("候选仓库");
-    expect(weeklyGithubTemplate.progressObject.states.map((state) => state.id)).toEqual([
-      "untested",
-      "testing",
-      "selected",
-      "maybe",
-      "rejected"
-    ]);
-    expect(weeklyGithubTemplate.progressObject.feedbackStateIds).toEqual([
-      "selected",
-      "maybe",
-      "rejected"
-    ]);
-  });
-
-  it("defines five recommendation slots and six stages", () => {
-    expect(weeklyGithubTemplate.slots).toHaveLength(5);
-    expect(weeklyGithubTemplate.stages.map((stage) => stage.name)).toEqual([
-      "候选收集",
-      "亲测",
-      "推荐选择",
-      "推荐理由写作",
-      "成稿",
-      "发布"
-    ]);
-  });
-
-  it("keeps recurrence and warning rules explicit", () => {
     expect(weeklyGithubTemplate.recurrence.defaultRule).toEqual({ kind: "weekly" });
-    expect(weeklyGithubTemplate.warningRules.deadlineRisk.daysBeforeDeadline).toBe(2);
+  });
+
+  it("defines no stages, slots, or progress objects because it is task-tree driven", () => {
+    const template: Template = weeklyGithubTemplate;
+
+    expect(weeklyGithubTemplate.stages).toEqual([]);
+    expect(weeklyGithubTemplate.slots).toEqual([]);
+    expect(template.progressObject).toBeUndefined();
+  });
+
+  it("keeps warning rules explicit for task-tree driven weekly work", () => {
     expect(weeklyGithubTemplate.warningRules.stagnation.daysWithoutActivity).toBe(2);
+    expect(weeklyGithubTemplate.warningRules.parallelLimit?.useGlobalLimit).toBe(true);
   });
 });

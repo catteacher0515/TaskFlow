@@ -1,0 +1,172 @@
+{
+  "id": "958a7c37-ca89-47a7-95a5-beb57df39f77",
+  "title": "周刊可编辑性验证",
+  "status": "active",
+  "templateId": "weekly-github-picks",
+  "templateSnapshot": {
+    "templateId": "weekly-github-picks",
+    "templateName": "每周 GitHub 精选",
+    "stages": [],
+    "slots": [],
+    "minimumActions": [
+      {
+        "id": "test-one-repo",
+        "label": "亲测 1 个候选仓库"
+      },
+      {
+        "id": "confirm-one-pick",
+        "label": "确定 1 个推荐"
+      },
+      {
+        "id": "write-one-reason",
+        "label": "写完 1 条推荐理由"
+      },
+      {
+        "id": "finish-one-section",
+        "label": "完成 1 个发布环节"
+      }
+    ],
+    "warningRules": {
+      "parallelLimit": {
+        "useGlobalLimit": true
+      },
+      "stagnation": {
+        "daysWithoutActivity": 2
+      }
+    }
+  },
+  "recurrence": {
+    "kind": "weekly"
+  },
+  "stages": [],
+  "progressObjects": [],
+  "slots": [],
+  "taskTree": {
+    "id": "958a7c37-ca89-47a7-95a5-beb57df39f77-root",
+    "title": "周刊可编辑性验证",
+    "status": "not_started",
+    "children": [
+      {
+        "id": "958a7c37-ca89-47a7-95a5-beb57df39f77-collect",
+        "title": "收集候选仓库",
+        "status": "not_started",
+        "children": [
+          {
+            "id": "b75d58eb-103e-43c8-95d9-92f16bef4015",
+            "title": "shiper",
+            "status": "dropped",
+            "children": [],
+            "createdAt": "2026-06-17T10:25:24.756Z",
+            "updatedAt": "2026-06-17T10:25:32.106Z",
+            "feedbackRecordedAt": "2026-06-17T10:25:32.106Z",
+            "feedbackStatus": "dropped"
+          }
+        ],
+        "createdAt": "2026-06-17T10:23:47.394Z",
+        "updatedAt": "2026-06-17T10:25:39.320Z"
+      },
+      {
+        "id": "958a7c37-ca89-47a7-95a5-beb57df39f77-hands-on",
+        "title": "亲测候选仓库",
+        "status": "not_started",
+        "children": [
+          {
+            "id": "ef3c6b36-452b-47b0-9470-e0066281c1b2",
+            "title": "whisper",
+            "status": "not_started",
+            "children": [],
+            "createdAt": "2026-06-17T10:26:27.703Z",
+            "updatedAt": "2026-06-17T10:26:33.453Z"
+          }
+        ],
+        "createdAt": "2026-06-17T10:23:47.394Z",
+        "updatedAt": "2026-06-17T10:26:27.703Z"
+      },
+      {
+        "id": "958a7c37-ca89-47a7-95a5-beb57df39f77-pick",
+        "title": "确定本周 5 个推荐",
+        "status": "not_started",
+        "children": [
+          {
+            "id": "958a7c37-ca89-47a7-95a5-beb57df39f77-pick-1",
+            "title": "推荐 1",
+            "status": "not_started",
+            "children": [],
+            "createdAt": "2026-06-17T10:23:47.394Z",
+            "updatedAt": "2026-06-17T10:23:47.394Z"
+          },
+          {
+            "id": "958a7c37-ca89-47a7-95a5-beb57df39f77-pick-2",
+            "title": "推荐 2",
+            "status": "not_started",
+            "children": [],
+            "createdAt": "2026-06-17T10:23:47.394Z",
+            "updatedAt": "2026-06-17T10:23:47.394Z"
+          },
+          {
+            "id": "958a7c37-ca89-47a7-95a5-beb57df39f77-pick-3",
+            "title": "推荐 3",
+            "status": "not_started",
+            "children": [],
+            "createdAt": "2026-06-17T10:23:47.394Z",
+            "updatedAt": "2026-06-17T10:23:47.394Z"
+          },
+          {
+            "id": "958a7c37-ca89-47a7-95a5-beb57df39f77-pick-4",
+            "title": "推荐 4",
+            "status": "not_started",
+            "children": [],
+            "createdAt": "2026-06-17T10:23:47.394Z",
+            "updatedAt": "2026-06-17T10:23:47.394Z"
+          },
+          {
+            "id": "958a7c37-ca89-47a7-95a5-beb57df39f77-pick-5",
+            "title": "推荐 5",
+            "status": "not_started",
+            "children": [],
+            "createdAt": "2026-06-17T10:23:47.394Z",
+            "updatedAt": "2026-06-17T10:23:47.394Z"
+          },
+          {
+            "id": "d2191e0a-585a-4f4c-9292-3299f587e11c",
+            "title": "whiper",
+            "status": "not_started",
+            "children": [],
+            "createdAt": "2026-06-17T10:25:08.696Z",
+            "updatedAt": "2026-06-17T10:25:08.696Z"
+          }
+        ],
+        "createdAt": "2026-06-17T10:23:47.394Z",
+        "updatedAt": "2026-06-17T10:25:08.696Z"
+      },
+      {
+        "id": "958a7c37-ca89-47a7-95a5-beb57df39f77-reasons",
+        "title": "写推荐理由",
+        "status": "not_started",
+        "children": [],
+        "createdAt": "2026-06-17T10:23:47.394Z",
+        "updatedAt": "2026-06-17T10:23:47.394Z"
+      },
+      {
+        "id": "958a7c37-ca89-47a7-95a5-beb57df39f77-draft",
+        "title": "成稿",
+        "status": "not_started",
+        "children": [],
+        "createdAt": "2026-06-17T10:23:47.394Z",
+        "updatedAt": "2026-06-17T10:31:08.278Z"
+      },
+      {
+        "id": "958a7c37-ca89-47a7-95a5-beb57df39f77-publish",
+        "title": "发布",
+        "status": "not_started",
+        "children": [],
+        "createdAt": "2026-06-17T10:23:47.394Z",
+        "updatedAt": "2026-06-17T10:23:47.394Z"
+      }
+    ],
+    "createdAt": "2026-06-17T10:23:47.394Z",
+    "updatedAt": "2026-06-17T10:26:27.703Z"
+  },
+  "createdAt": "2026-06-17T10:23:47.394Z",
+  "updatedAt": "2026-06-17T10:31:08.278Z"
+}

@@ -1,12 +1,53 @@
 import { describe, expect, it } from "vitest";
 import { addProgressObject, advanceStage, fillSlot, transitionProgressObject } from "../../src/shared/progress";
 import { createProjectFromTemplate } from "../../src/shared/projectFactory";
-import { weeklyGithubTemplate } from "../../src/shared/weeklyGithubTemplate";
+import type { Template } from "../../src/shared/types";
+
+const progressTemplate: Template = {
+  id: "weekly-github-picks-legacy-progress",
+  name: "每周 GitHub 精选",
+  description: "用于验证旧的阶段/槽位/推进对象进度流。",
+  stages: [
+    { id: "collect", name: "候选收集" },
+    { id: "hands_on", name: "亲测候选" },
+    { id: "select", name: "选择推荐" },
+    { id: "write_reasons", name: "撰写理由" },
+    { id: "draft", name: "成稿" },
+    { id: "publish", name: "发布" }
+  ],
+  progressObject: {
+    name: "候选仓库",
+    fields: ["url"],
+    states: [
+      { id: "untested", name: "待测试", category: "open" },
+      { id: "testing", name: "测试中", category: "in_progress" },
+      { id: "maybe", name: "备选", category: "concluded" },
+      { id: "selected", name: "已选中", category: "concluded" },
+      { id: "rejected", name: "淘汰", category: "concluded" }
+    ],
+    feedbackStateIds: ["maybe", "selected", "rejected"]
+  },
+  slots: Array.from({ length: 5 }, (_, index) => ({
+    id: `recommendation-${index + 1}`,
+    name: `推荐 ${index + 1}`
+  })),
+  minimumActions: [
+    { id: "test-one-repo", label: "亲测 1 个候选仓库" },
+    { id: "confirm-one-pick", label: "确认 1 个推荐位" }
+  ],
+  recurrence: {
+    supportedRules: ["none", "weekly"],
+    defaultRule: { kind: "weekly" }
+  },
+  warningRules: {
+    stagnation: { daysWithoutActivity: 2 }
+  }
+};
 
 function makeProject() {
   return createProjectFromTemplate({
     id: "project-1",
-    template: weeklyGithubTemplate,
+    template: progressTemplate,
     title: "每周 GitHub 精选 2026-W25",
     recurrence: { kind: "weekly" },
     now: "2026-06-15T10:00:00.000Z"

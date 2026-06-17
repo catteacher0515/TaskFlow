@@ -1,10 +1,10 @@
 import request from "supertest";
 import { afterEach, describe, expect, it } from "vitest";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { createApp } from "../../src/server/app";
-import { initializeDataDir, writeSettings } from "../../src/server/storage";
+import { dataDir, initializeDataDir, writeSettings } from "../../src/server/storage";
 import type { Template } from "../../src/shared/types";
 import { weeklyGithubTemplate } from "../../src/shared/weeklyGithubTemplate";
 
@@ -125,8 +125,8 @@ describe("Express API routes", () => {
     expect(response.body.error).toBe("Template id must match route parameter");
   });
 
-  it("adds a progress object and records small feedback on feedback state transition", async () => {
-    const { app } = await makeFixture(["project-1", "progress-object-1", "activity-1"]);
+  it("creates a weekly GitHub project with a prebuilt task tree", async () => {
+    const { app } = await makeFixture(["project-1"]);
     await request(app)
       .post("/api/projects")
       .send({
@@ -136,65 +136,26 @@ describe("Express API routes", () => {
       })
       .expect(201);
 
-    const addResponse = await request(app)
-      .post("/api/projects/project-1/progress-objects")
-      .send({
-        title: "openai/codex",
-        fields: { repoName: "openai/codex", url: "https://github.com/openai/codex" }
-      })
-      .expect(200);
+    const stateResponse = await request(app).get("/api/state").expect(200);
 
-    expect(addResponse.body.projects[0].progressObjects[0]).toMatchObject({
-      id: "progress-object-1",
-      title: "openai/codex",
-      stateId: "untested"
-    });
-
-    const transitionResponse = await request(app)
-      .patch("/api/projects/project-1/progress-objects/progress-object-1/state")
-      .send({ nextStateId: "selected", note: "值得写进本周推荐" })
-      .expect(200);
-
-    expect(transitionResponse.body.projects[0].progressObjects[0].stateId).toBe("selected");
-    expect(transitionResponse.body.activity[0]).toMatchObject({
-      id: "activity-1",
-      kind: "small",
-      projectId: "project-1",
-      progressObjectId: "progress-object-1"
-    });
-    expect(transitionResponse.body.activity[0].message).toContain("值得写进本周推荐");
-  });
-
-  it("does not append duplicate feedback when a concluded progress object is revised", async () => {
-    const { app } = await makeFixture(["project-1", "progress-object-1", "activity-1", "activity-2"]);
-    await request(app)
-      .post("/api/projects")
-      .send({
-        templateId: "weekly-github-picks",
-        title: "每周 GitHub 精选 2026-W25",
-        recurrence: { kind: "weekly" }
-      })
-      .expect(201);
-    await request(app)
-      .post("/api/projects/project-1/progress-objects")
-      .send({ title: "openai/codex", fields: {} })
-      .expect(200);
-    await request(app)
-      .patch("/api/projects/project-1/progress-objects/progress-object-1/state")
-      .send({ nextStateId: "maybe", note: "先备选" })
-      .expect(200);
-
-    const response = await request(app)
-      .patch("/api/projects/project-1/progress-objects/progress-object-1/state")
-      .send({ nextStateId: "selected", note: "改为入选" })
-      .expect(200);
-
-    expect(response.body.projects[0].progressObjects[0].stateId).toBe("selected");
-    expect(response.body.activity).toHaveLength(1);
-    expect(response.body.activity[0]).toMatchObject({
-      id: "activity-1",
-      message: "候选仓库 openai/codex 进入 备选：先备选"
-    });
+    expect(stateResponse.body.projects[0].stages).toEqual([]);
+    expect(stateResponse.body.projects[0].progressObjects).toEqual([]);
+    expect(stateResponse.body.projects[0].slots).toEqual([]);
+    expect(stateResponse.body.projects[0].taskTree.children.map((task: { title: string }) => task.title)).toEqual([
+      "亲测候选仓库",
+      "确定本周 5 个推荐",
+      "成稿",
+      "发布"
+    ]);
+    expect(stateResponse.body.projects[0].taskTree.children[1].children).toEqual([]);
+    expect(stateResponse.body.projects[0].taskTree.children[3].children.map((task: { title: string }) => task.title)).toEqual([
+      "抖音",
+      "知乎",
+      "B站",
+      "小红书",
+      "编程导航",
+      "稀土掘金"
+    ]);
   });
 
   it("adds and transitions generic task tree children", async () => {
@@ -260,6 +221,32 @@ describe("Express API routes", () => {
       status: "not_started"
     });
     expect(restoredResponse.body.activity).toEqual([]);
+  });
+
+  it("revokes a feedback item manually without deleting the underlying log entry", async () => {
+    const { app, rootDir } = await makeFixture(["project-1", "task-1", "activity-1", "activity-revoke"]);
+    await request(app)
+      .post("/api/projects")
+      .send({ templateId: "generic-task", title: "整理播客选题", recurrence: { kind: "none" } })
+      .expect(201);
+    await request(app)
+      .post("/api/projects/project-1/tasks/project-1-root/children")
+      .send({ title: "收集候选选题" })
+      .expect(200);
+    await request(app)
+      .patch("/api/projects/project-1/tasks/task-1/status")
+      .send({ status: "completed" })
+      .expect(200);
+
+    const revokeResponse = await request(app)
+      .post("/api/activity/activity-1/revoke")
+      .send({})
+      .expect(200);
+
+    expect(revokeResponse.body.activity).toEqual([]);
+    const rawLog = await readFile(path.join(dataDir(rootDir), "activity-log.jsonl"), "utf8");
+    expect(rawLog).toContain('"id":"activity-1"');
+    expect(rawLog).toContain('"id":"activity-revoke"');
   });
 
   it("enforces focus mode mutations and completes the focus session", async () => {
@@ -354,25 +341,25 @@ describe("Express API routes", () => {
   });
 
   it("blocks project mutations until one active project is selected after parallel limit is exceeded", async () => {
-    const { app } = await makeFixture(["project-1", "project-2", "project-3", "progress-object-1"]);
+    const { app } = await makeFixture(["project-1", "project-2", "project-3", "task-1"]);
     await request(app)
       .post("/api/projects")
-      .send({ templateId: "weekly-github-picks", title: "Project 1", recurrence: { kind: "weekly" } })
+      .send({ templateId: "generic-task", title: "Project 1", recurrence: { kind: "none" } })
       .expect(201);
     await request(app)
       .post("/api/projects")
-      .send({ templateId: "weekly-github-picks", title: "Project 2", recurrence: { kind: "weekly" } })
+      .send({ templateId: "generic-task", title: "Project 2", recurrence: { kind: "none" } })
       .expect(201);
     await request(app)
       .post("/api/projects")
-      .send({ templateId: "weekly-github-picks", title: "Project 3", recurrence: { kind: "weekly" } })
+      .send({ templateId: "generic-task", title: "Project 3", recurrence: { kind: "none" } })
       .expect(201);
     await request(app).patch("/api/projects/project-1/status").send({ status: "active" }).expect(200);
     await request(app).patch("/api/projects/project-2/status").send({ status: "active" }).expect(200);
 
     const blockedResponse = await request(app)
-      .post("/api/projects/project-1/progress-objects")
-      .send({ title: "blocked repo", fields: {} })
+      .post("/api/projects/project-1/tasks/project-1-root/children")
+      .send({ title: "blocked task" })
       .expect(409);
 
     expect(blockedResponse.body.error).toBe("Parallel limit requires selecting one focus project first");
@@ -383,8 +370,8 @@ describe("Express API routes", () => {
       .expect(200);
 
     await request(app)
-      .post("/api/projects/project-1/progress-objects")
-      .send({ title: "allowed repo", fields: {} })
+      .post("/api/projects/project-1/tasks/project-1-root/children")
+      .send({ title: "allowed task" })
       .expect(200);
   });
 
@@ -512,7 +499,7 @@ describe("Express API routes", () => {
     expect(response.body.focusMode).toEqual({ status: "inactive" });
   });
 
-  it("maps unknown progress object mutations to not found", async () => {
+  it("rejects progress object mutations for task-tree driven weekly projects", async () => {
     const { app } = await makeFixture();
     await request(app)
       .post("/api/projects")
@@ -522,9 +509,9 @@ describe("Express API routes", () => {
     const response = await request(app)
       .patch("/api/projects/project-1/progress-objects/missing-object/state")
       .send({ nextStateId: "selected", note: "missing" })
-      .expect(404);
+      .expect(400);
 
-    expect(response.body.error).toBe("Unknown progress object: missing-object");
+    expect(response.body.error).toBe("Project template does not define progress objects");
   });
 
   it("maps duplicate focus session completion to conflict", async () => {

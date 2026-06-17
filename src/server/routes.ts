@@ -162,6 +162,27 @@ export function registerRoutes(app: Express, deps: RouteDeps) {
     res.json(await readStateWithWarnings(deps));
   }));
 
+  app.post("/api/activity/:activityId/revoke", asyncRoute(async (req, res) => {
+    const state = await readStateWithWarnings(deps);
+    const activity = findEffectiveActivity(state.activity, req.params.activityId);
+
+    if (!activity) {
+      throw new HttpError(404, "Unknown activity");
+    }
+
+    await appendActivity(deps.rootDir, {
+      id: deps.id(),
+      projectId: activity.projectId,
+      kind: activity.kind,
+      type: "feedback_revoked",
+      message: `反馈撤销：${activity.message}`,
+      revokedActivityId: activity.id,
+      createdAt: deps.now()
+    });
+
+    res.json(await readStateWithWarnings(deps));
+  }));
+
   app.patch("/api/projects/:projectId/progress-objects/:progressObjectId/state", asyncRoute(async (req, res) => {
     let activity: ActivityEntry | undefined;
     await mutateProject(deps, req.params.projectId, (project) => {
@@ -295,6 +316,10 @@ function findEffectiveTaskFeedback(activity: ActivityEntry[], taskId: string): A
     .find((entry) => entry.taskId === taskId && (entry.type === "task_completed" || entry.type === "entropy_reduced"));
 }
 
+function findEffectiveActivity(activity: ActivityEntry[], activityId: string): ActivityEntry | undefined {
+  return activity.find((entry) => entry.id === activityId);
+}
+
 function assertCanMutate(state: AppState, projectId: string) {
   assertParallelLimitResolved(state);
 
@@ -415,6 +440,7 @@ function mapDomainError(error: unknown): HttpError | undefined {
 
   if (
     error.message.startsWith("Unknown progress state:") ||
+    error.message === "Project template does not define progress objects" ||
     error.message === "Next stage is required" ||
     error.message.startsWith("Next stage must follow completed stage:") ||
     error.message.startsWith("Next stage is not ready:") ||

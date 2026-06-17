@@ -16,13 +16,27 @@ describe("createProjectFromTemplate", () => {
 
     expect(project.templateId).toBe("weekly-github-picks");
     expect(project.templateSnapshot.templateName).toBe("每周 GitHub 精选");
-    expect(project.stages[0]).toEqual({ id: "collect", name: "候选收集", status: "active" });
-    expect(project.stages.slice(1).every((stage) => stage.status === "not_started")).toBe(true);
-    expect(project.slots).toHaveLength(5);
+    expect(project.stages).toEqual([]);
+    expect(project.slots).toEqual([]);
     expect(project.progressObjects).toEqual([]);
+    expect(project.taskTree?.children.map((task) => task.title)).toEqual([
+      "亲测候选仓库",
+      "确定本周 5 个推荐",
+      "成稿",
+      "发布"
+    ]);
+    expect(project.taskTree?.children[1]?.children).toEqual([]);
+    expect(project.taskTree?.children[3]?.children.map((task) => task.title)).toEqual([
+      "抖音",
+      "知乎",
+      "B站",
+      "小红书",
+      "编程导航",
+      "稀土掘金"
+    ]);
   });
 
-  it("does not share mutable stage arrays with the template", () => {
+  it("does not share mutable task metadata arrays with the template", () => {
     const project = createProjectFromTemplate({
       id: "project-1",
       template: weeklyGithubTemplate,
@@ -31,9 +45,9 @@ describe("createProjectFromTemplate", () => {
       now: "2026-06-15T10:00:00.000Z"
     });
 
-    project.templateSnapshot.stages[0].name = "changed";
+    project.templateSnapshot.minimumActions[0].label = "changed";
 
-    expect(weeklyGithubTemplate.stages[0].name).toBe("候选收集");
+    expect(weeklyGithubTemplate.minimumActions[0].label).toBe("处理 1 个候选仓库");
   });
 
   it("creates a root task tree for generic task projects", () => {

@@ -4,6 +4,7 @@ import type { ActivityEntry, AppState, FocusModeState, Project, Settings, Templa
 import { genericTaskTemplate } from "../shared/genericTaskTemplate";
 import { createRootTask } from "../shared/taskTree";
 import { weeklyGithubTemplate } from "../shared/weeklyGithubTemplate";
+import { normalizeWeeklyGithubTaskTree, WEEKLY_GITHUB_TEMPLATE_ID } from "../shared/weeklyGithubProject";
 
 const defaultSettings: Settings = {
   dataVersion: 1,
@@ -138,27 +139,47 @@ function normalizeTemplate(template: Template): Template {
     return genericTaskTemplate;
   }
 
+  if (template.id === weeklyGithubTemplate.id) {
+    return weeklyGithubTemplate;
+  }
+
   return template;
 }
 
 function normalizeProject(project: Project): Project {
-  if (project.templateId !== genericTaskTemplate.id) {
-    return project;
+  if (project.templateId === genericTaskTemplate.id) {
+    return {
+      ...project,
+      templateSnapshot: {
+        ...project.templateSnapshot,
+        stages: []
+      },
+      stages: [],
+      taskTree: project.taskTree ?? createRootTask({
+        id: `${project.id}-root`,
+        title: project.title,
+        now: project.createdAt
+      })
+    };
   }
 
-  return {
-    ...project,
-    templateSnapshot: {
-      ...project.templateSnapshot,
-      stages: []
-    },
-    stages: [],
-    taskTree: project.taskTree ?? createRootTask({
-      id: `${project.id}-root`,
-      title: project.title,
-      now: project.createdAt
-    })
-  };
+  if (project.templateId === WEEKLY_GITHUB_TEMPLATE_ID) {
+    return {
+      ...project,
+      templateSnapshot: {
+        ...project.templateSnapshot,
+        stages: [],
+        progressObject: undefined,
+        slots: []
+      },
+      stages: [],
+      progressObjects: [],
+      slots: [],
+      taskTree: normalizeWeeklyGithubTaskTree(project)
+    };
+  }
+
+  return project;
 }
 
 async function writeJsonFile(filePath: string, value: unknown) {

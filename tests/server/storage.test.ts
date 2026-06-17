@@ -199,6 +199,84 @@ describe("local file storage", () => {
     });
   });
 
+  it("normalizes legacy weekly GitHub projects into task-tree projects", async () => {
+    const root = await makeRoot();
+    await initializeDataDir(root);
+    await writeFile(
+      path.join(dataDir(root), "projects", "legacy-weekly.json"),
+      JSON.stringify(
+        {
+          id: "legacy-weekly",
+          title: "GitHub 每周精选｜2026 W25",
+          status: "active",
+          templateId: "weekly-github-picks",
+          templateSnapshot: {
+            templateId: "weekly-github-picks",
+            templateName: "每周 GitHub 精选",
+            stages: [{ id: "collect", name: "候选收集" }],
+            progressObject: {
+              name: "候选仓库",
+              fields: ["repoName"],
+              states: [{ id: "untested", name: "未测", category: "open" }],
+              feedbackStateIds: []
+            },
+            slots: [{ id: "recommendation-1", name: "推荐 1" }],
+            minimumActions: [{ id: "test-one-repo", label: "亲测 1 个候选仓库" }],
+            warningRules: {
+              parallelLimit: { useGlobalLimit: true },
+              stagnation: { daysWithoutActivity: 2 }
+            }
+          },
+          recurrence: { kind: "weekly" },
+          stages: [{ id: "collect", name: "候选收集", status: "active" }],
+          progressObjects: [
+            {
+              id: "repo-1",
+              title: "openai/codex",
+              stateId: "untested",
+              fields: { repoName: "openai/codex" },
+              createdAt: "2026-06-16T08:00:00.000Z",
+              updatedAt: "2026-06-16T08:00:00.000Z"
+            }
+          ],
+          slots: [{ id: "recommendation-1", name: "推荐 1", progressObjectId: "repo-1" }],
+          createdAt: "2026-06-16T08:00:00.000Z",
+          updatedAt: "2026-06-16T08:00:00.000Z"
+        },
+        null,
+        2
+      ),
+      "utf8"
+    );
+
+    const state = await readState(root);
+
+    expect(state.projects[0].stages).toEqual([]);
+    expect(state.projects[0].progressObjects).toEqual([]);
+    expect(state.projects[0].slots).toEqual([]);
+    expect(state.projects[0].templateSnapshot.stages).toEqual([]);
+    expect(state.projects[0].templateSnapshot.progressObject).toBeUndefined();
+    expect(state.projects[0].templateSnapshot.slots).toEqual([]);
+    expect(state.projects[0].taskTree?.children.map((task) => task.title)).toEqual([
+      "亲测候选仓库",
+      "确定本周 5 个推荐",
+      "成稿",
+      "发布"
+    ]);
+    expect(state.projects[0].taskTree?.children[0]?.children.map((task) => [task.title, task.status])).toEqual([
+      ["openai/codex", "not_started"]
+    ]);
+    expect(state.projects[0].taskTree?.children[1]?.children).toEqual([]);
+    expect(state.projects[0].taskTree?.children[3]?.children.map((task) => task.title)).toEqual([
+      "抖音",
+      "知乎",
+      "B站",
+      "小红书",
+      "编程导航",
+      "稀土掘金"
+    ]);
+  });
+
   it("keeps seeded weekly GitHub template in sync with the source template", async () => {
     const raw = await readFile(path.join(process.cwd(), "data", "templates", "weekly-github-picks.json"), "utf8");
 

@@ -1,5 +1,6 @@
 import type { Project, RecurrenceRule, Template } from "./types";
 import { createRootTask } from "./taskTree";
+import { buildWeeklyGithubTaskTree, WEEKLY_GITHUB_TEMPLATE_ID } from "./weeklyGithubProject";
 
 interface CreateProjectInput {
   id: string;
@@ -15,13 +16,7 @@ export function createProjectFromTemplate(input: CreateProjectInput): Project {
     ...stage,
     status: index === 0 ? ("active" as const) : ("not_started" as const)
   }));
-  const taskTree = input.template.id === "generic-task"
-    ? createRootTask({
-        id: `${input.id}-root`,
-        title: input.title,
-        now: input.now
-      })
-    : undefined;
+  const taskTree = createTemplateTaskTree(input.id, input.template.id, input.title, input.now);
 
   return {
     id: input.id,
@@ -48,4 +43,20 @@ export function createProjectFromTemplate(input: CreateProjectInput): Project {
     createdAt: input.now,
     updatedAt: input.now
   };
+}
+
+function createTemplateTaskTree(projectId: string, templateId: string | undefined, title: string, now: string) {
+  if (templateId === "generic-task") {
+    return createRootTask({
+      id: `${projectId}-root`,
+      title,
+      now
+    });
+  }
+
+  if (templateId === WEEKLY_GITHUB_TEMPLATE_ID) {
+    return buildWeeklyGithubTaskTree(projectId, title, now);
+  }
+
+  return undefined;
 }

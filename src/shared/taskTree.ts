@@ -29,6 +29,17 @@ export function createRootTask(input: { id: string; title: string; now: string }
   };
 }
 
+export function createTaskNode(input: { id: string; title: string; now: string; children?: TaskNode[] }): TaskNode {
+  return {
+    id: input.id,
+    title: input.title,
+    status: "not_started",
+    children: input.children ?? [],
+    createdAt: input.now,
+    updatedAt: input.now
+  };
+}
+
 export function addTaskChild(project: Project, input: AddTaskChildInput): Project {
   const taskTree = requireTaskTree(project);
   const child = createRootTask({

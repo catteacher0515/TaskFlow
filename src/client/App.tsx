@@ -7,6 +7,7 @@ import {
   fillSlotApi,
   fetchState,
   hideProjectApi,
+  revokeActivityApi,
   reopenProjectApi,
   selectFocusProjectApi,
   transitionProgressObjectApi,
@@ -120,6 +121,41 @@ export function App() {
     return runMutation(() => exitFocusModeApi());
   }
 
+  function handleRevokeActivity(activityId: string) {
+    return runMutation(() => revokeActivityApi(activityId));
+  }
+
+  async function handleRevokeActivities(activityIds: string[]) {
+    if (activityIds.length === 0) {
+      return;
+    }
+
+    setError(null);
+
+    try {
+      let nextState: AppState | undefined;
+      const revokedActivityIds = new Set(activityIds);
+
+      for (const activityId of activityIds) {
+        nextState = await revokeActivityApi(activityId);
+      }
+
+      if (!nextState) {
+        return;
+      }
+
+      const finalState: AppState = {
+        ...nextState,
+        activity: nextState.activity.filter((activity) => !revokedActivityIds.has(activity.id))
+      };
+
+      setState(finalState);
+      setSelectedProjectId((currentId) => resolveSelectedProjectId(finalState, currentId));
+    } catch (caught: unknown) {
+      setError(caught instanceof Error ? caught.message : "操作失败");
+    }
+  }
+
   async function handleCreateProject(input: Parameters<typeof createProjectApi>[0]) {
     setError(null);
 
@@ -217,7 +253,6 @@ export function App() {
               selectedProjectId={selectedProject?.id}
               onSelectProject={setSelectedProjectId}
             />
-            <TemplateManager templates={state.templates} />
           </aside>
 
           <ProjectDetail
@@ -256,7 +291,12 @@ export function App() {
 
       {state && view === "feedback" ? (
         <div className="single-layout">
-          <FeedbackPage state={state} selectedProjectId={selectedProjectId} />
+          <FeedbackPage
+            state={state}
+            selectedProjectId={selectedProjectId}
+            onRevokeActivity={handleRevokeActivity}
+            onRevokeActivities={handleRevokeActivities}
+          />
         </div>
       ) : null}
     </main>

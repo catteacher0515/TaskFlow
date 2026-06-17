@@ -1,0 +1,153 @@
+{
+  "id": "bf4ec1b2-48f9-4b27-a01b-5d1b95ee7742",
+  "title": "很好",
+  "status": "active",
+  "templateId": "weekly-github-picks",
+  "templateSnapshot": {
+    "templateId": "weekly-github-picks",
+    "templateName": "每周 GitHub 精选",
+    "stages": [],
+    "slots": [],
+    "minimumActions": [
+      {
+        "id": "test-one-repo",
+        "label": "亲测 1 个候选仓库"
+      },
+      {
+        "id": "confirm-one-pick",
+        "label": "确定 1 个推荐"
+      },
+      {
+        "id": "write-one-reason",
+        "label": "写完 1 条推荐理由"
+      },
+      {
+        "id": "finish-one-section",
+        "label": "完成 1 个发布环节"
+      }
+    ],
+    "warningRules": {
+      "parallelLimit": {
+        "useGlobalLimit": true
+      },
+      "stagnation": {
+        "daysWithoutActivity": 2
+      }
+    }
+  },
+  "recurrence": {
+    "kind": "weekly"
+  },
+  "stages": [],
+  "progressObjects": [],
+  "slots": [],
+  "taskTree": {
+    "id": "bf4ec1b2-48f9-4b27-a01b-5d1b95ee7742-root",
+    "title": "很好",
+    "status": "not_started",
+    "children": [
+      {
+        "id": "bf4ec1b2-48f9-4b27-a01b-5d1b95ee7742-collect",
+        "title": "收集候选仓库",
+        "status": "not_started",
+        "children": [
+          {
+            "id": "487c2620-bfde-4f23-a658-9dbb24cc1a72",
+            "title": "whisper",
+            "status": "not_started",
+            "children": [],
+            "createdAt": "2026-06-17T10:58:06.501Z",
+            "updatedAt": "2026-06-17T10:58:09.044Z"
+          }
+        ],
+        "createdAt": "2026-06-17T10:57:48.022Z",
+        "updatedAt": "2026-06-17T10:58:06.501Z"
+      },
+      {
+        "id": "bf4ec1b2-48f9-4b27-a01b-5d1b95ee7742-hands-on",
+        "title": "亲测候选仓库",
+        "status": "not_started",
+        "children": [],
+        "createdAt": "2026-06-17T10:57:48.022Z",
+        "updatedAt": "2026-06-17T10:57:48.022Z"
+      },
+      {
+        "id": "bf4ec1b2-48f9-4b27-a01b-5d1b95ee7742-pick",
+        "title": "确定本周 5 个推荐",
+        "status": "not_started",
+        "children": [
+          {
+            "id": "bf4ec1b2-48f9-4b27-a01b-5d1b95ee7742-pick-1",
+            "title": "推荐 1",
+            "status": "not_started",
+            "children": [],
+            "createdAt": "2026-06-17T10:57:48.022Z",
+            "updatedAt": "2026-06-17T10:57:48.022Z"
+          },
+          {
+            "id": "bf4ec1b2-48f9-4b27-a01b-5d1b95ee7742-pick-2",
+            "title": "推荐 2",
+            "status": "not_started",
+            "children": [],
+            "createdAt": "2026-06-17T10:57:48.022Z",
+            "updatedAt": "2026-06-17T10:57:48.022Z"
+          },
+          {
+            "id": "bf4ec1b2-48f9-4b27-a01b-5d1b95ee7742-pick-3",
+            "title": "推荐 3",
+            "status": "not_started",
+            "children": [],
+            "createdAt": "2026-06-17T10:57:48.022Z",
+            "updatedAt": "2026-06-17T10:57:48.022Z"
+          },
+          {
+            "id": "bf4ec1b2-48f9-4b27-a01b-5d1b95ee7742-pick-4",
+            "title": "推荐 4",
+            "status": "not_started",
+            "children": [],
+            "createdAt": "2026-06-17T10:57:48.022Z",
+            "updatedAt": "2026-06-17T10:57:48.022Z"
+          },
+          {
+            "id": "bf4ec1b2-48f9-4b27-a01b-5d1b95ee7742-pick-5",
+            "title": "推荐 5",
+            "status": "not_started",
+            "children": [],
+            "createdAt": "2026-06-17T10:57:48.022Z",
+            "updatedAt": "2026-06-17T10:57:48.022Z"
+          }
+        ],
+        "createdAt": "2026-06-17T10:57:48.022Z",
+        "updatedAt": "2026-06-17T10:57:48.022Z"
+      },
+      {
+        "id": "bf4ec1b2-48f9-4b27-a01b-5d1b95ee7742-reasons",
+        "title": "写推荐理由",
+        "status": "not_started",
+        "children": [],
+        "createdAt": "2026-06-17T10:57:48.022Z",
+        "updatedAt": "2026-06-17T10:57:48.022Z"
+      },
+      {
+        "id": "bf4ec1b2-48f9-4b27-a01b-5d1b95ee7742-draft",
+        "title": "成稿",
+        "status": "not_started",
+        "children": [],
+        "createdAt": "2026-06-17T10:57:48.022Z",
+        "updatedAt": "2026-06-17T10:57:48.022Z"
+      },
+      {
+        "id": "bf4ec1b2-48f9-4b27-a01b-5d1b95ee7742-publish",
+        "title": "发布",
+        "status": "not_started",
+        "children": [],
+        "createdAt": "2026-06-17T10:57:48.022Z",
+        "updatedAt": "2026-06-17T10:57:48.022Z"
+      }
+    ],
+    "createdAt": "2026-06-17T10:57:48.022Z",
+    "updatedAt": "2026-06-17T10:58:06.501Z"
+  },
+  "createdAt": "2026-06-17T10:57:48.022Z",
+  "updatedAt": "2026-06-17T10:58:09.044Z"
+}

@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createProjectFromTemplate } from "../../src/shared/projectFactory";
-import type { ActivityEntry, Project, Settings } from "../../src/shared/types";
-import { weeklyGithubTemplate } from "../../src/shared/weeklyGithubTemplate";
+import type { ActivityEntry, Project, Settings, Template } from "../../src/shared/types";
 import { evaluateWarnings } from "../../src/shared/warnings";
 
 const settings: Settings = {
@@ -10,10 +9,48 @@ const settings: Settings = {
   defaultStagnationDays: 5
 };
 
+const warningTemplate: Template = {
+  id: "warning-fixture",
+  name: "告警夹具模板",
+  description: "用于验证并行、截止和停滞告警规则。",
+  stages: [
+    { id: "collect", name: "候选收集" },
+    { id: "hands_on", name: "亲测候选" },
+    { id: "publish", name: "发布" }
+  ],
+  progressObject: {
+    name: "候选仓库",
+    fields: ["url"],
+    states: [
+      { id: "untested", name: "待测试", category: "open" },
+      { id: "selected", name: "已选中", category: "concluded" }
+    ],
+    feedbackStateIds: ["selected"]
+  },
+  slots: [
+    { id: "recommendation-1", name: "推荐 1" },
+    { id: "recommendation-2", name: "推荐 2" }
+  ],
+  minimumActions: [{ id: "confirm-one-pick", label: "确认 1 个推荐位" }],
+  recurrence: {
+    supportedRules: ["none", "weekly"],
+    defaultRule: { kind: "weekly" }
+  },
+  warningRules: {
+    parallelLimit: { useGlobalLimit: true },
+    deadlineRisk: {
+      daysBeforeDeadline: 2,
+      requiredFilledSlotRatio: 1,
+      requiredStageId: "publish"
+    },
+    stagnation: { daysWithoutActivity: 2 }
+  }
+};
+
 function makeProject(overrides: Partial<Project> = {}): Project {
   const project = createProjectFromTemplate({
     id: overrides.id ?? "project-1",
-    template: weeklyGithubTemplate,
+    template: warningTemplate,
     title: overrides.title ?? "每周 GitHub 精选 2026-W25",
     deadline: overrides.deadline,
     recurrence: { kind: "weekly" },

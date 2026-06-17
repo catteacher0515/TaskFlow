@@ -1,0 +1,97 @@
+{
+  "id": "aa380e70-13e5-41e0-bcb5-725699f1ec25",
+  "title": "新建任务",
+  "status": "not_started",
+  "templateId": "generic-task",
+  "templateSnapshot": {
+    "templateId": "generic-task",
+    "templateName": "通用任务",
+    "stages": [],
+    "slots": [],
+    "minimumActions": [
+      {
+        "id": "start-five-minutes",
+        "label": "先推进 5 分钟"
+      },
+      {
+        "id": "record-one-result",
+        "label": "记录一个结果"
+      }
+    ],
+    "warningRules": {
+      "parallelLimit": {
+        "useGlobalLimit": true
+      },
+      "stagnation": {
+        "daysWithoutActivity": 7
+      }
+    }
+  },
+  "recurrence": {
+    "kind": "none"
+  },
+  "stages": [],
+  "progressObjects": [],
+  "slots": [],
+  "taskTree": {
+    "id": "aa380e70-13e5-41e0-bcb5-725699f1ec25-root",
+    "title": "新建任务",
+    "status": "not_started",
+    "children": [
+      {
+        "id": "0b02f285-5f36-4633-b2b2-08aa022fe674",
+        "title": "一个小任务",
+        "status": "not_started",
+        "children": [
+          {
+            "id": "e5484154-09fe-4f0d-8aa8-3d067c4b83b4",
+            "title": "一个小任务",
+            "status": "not_started",
+            "children": [],
+            "createdAt": "2026-06-17T11:49:54.048Z",
+            "updatedAt": "2026-06-17T11:50:51.764Z"
+          },
+          {
+            "id": "e7c22dbd-8cbe-4012-b898-ac76abec6eeb",
+            "title": "一个小任务",
+            "status": "not_started",
+            "children": [],
+            "createdAt": "2026-06-17T11:50:10.908Z",
+            "updatedAt": "2026-06-17T11:50:10.908Z"
+          }
+        ],
+        "createdAt": "2026-06-17T11:49:49.119Z",
+        "updatedAt": "2026-06-17T11:50:10.908Z"
+      },
+      {
+        "id": "6058d97d-d5d1-4876-9f6c-67b8fa5dba9e",
+        "title": "一个小任务",
+        "status": "not_started",
+        "children": [
+          {
+            "id": "99cb1e91-4929-4f21-8263-b5bd2d78412c",
+            "title": "一个小任务",
+            "status": "not_started",
+            "children": [],
+            "createdAt": "2026-06-17T11:50:14.962Z",
+            "updatedAt": "2026-06-17T11:50:14.962Z"
+          },
+          {
+            "id": "10c2307a-0426-4ffc-9529-f0221e0196cb",
+            "title": "一个小任务",
+            "status": "not_started",
+            "children": [],
+            "createdAt": "2026-06-17T11:50:17.944Z",
+            "updatedAt": "2026-06-17T11:50:17.944Z"
+          }
+        ],
+        "createdAt": "2026-06-17T11:50:02.198Z",
+        "updatedAt": "2026-06-17T11:50:17.944Z"
+      }
+    ],
+    "createdAt": "2026-06-17T11:49:42.803Z",
+    "updatedAt": "2026-06-17T11:50:17.944Z"
+  },
+  "createdAt": "2026-06-17T11:49:42.803Z",
+  "updatedAt": "2026-06-17T11:50:51.764Z"
+}

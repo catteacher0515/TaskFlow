@@ -1,0 +1,204 @@
+{
+  "id": "935ed100-83b1-4cb9-bc83-355bfe52f8cb",
+  "title": "GitHub 每周精选｜2026 W25",
+  "status": "active",
+  "templateId": "weekly-github-picks",
+  "templateSnapshot": {
+    "templateId": "weekly-github-picks",
+    "templateName": "每周 GitHub 精选",
+    "stages": [],
+    "slots": [],
+    "minimumActions": [
+      {
+        "id": "test-one-repo",
+        "label": "亲测 1 个候选仓库"
+      },
+      {
+        "id": "write-one-decision",
+        "label": "给 1 个候选仓库写结论理由"
+      },
+      {
+        "id": "fill-one-slot",
+        "label": "填入 1 个推荐槽位"
+      },
+      {
+        "id": "draft-one-reason",
+        "label": "写完 1 个推荐理由草稿"
+      }
+    ],
+    "warningRules": {
+      "parallelLimit": {
+        "useGlobalLimit": true
+      },
+      "deadlineRisk": {
+        "daysBeforeDeadline": 2,
+        "requiredFilledSlotRatio": 1,
+        "requiredStageId": "write_reasons"
+      },
+      "stagnation": {
+        "daysWithoutActivity": 2
+      }
+    }
+  },
+  "recurrence": {
+    "kind": "weekly"
+  },
+  "stages": [],
+  "progressObjects": [],
+  "slots": [],
+  "createdAt": "2026-06-17T09:48:27.914Z",
+  "updatedAt": "2026-06-17T12:29:45.158Z",
+  "taskTree": {
+    "id": "935ed100-83b1-4cb9-bc83-355bfe52f8cb-root",
+    "title": "GitHub 每周精选｜2026 W25",
+    "status": "not_started",
+    "children": [
+      {
+        "id": "935ed100-83b1-4cb9-bc83-355bfe52f8cb-hands-on",
+        "title": "亲测候选仓库",
+        "status": "not_started",
+        "children": [
+          {
+            "id": "b39c1cf8-b046-410f-a5e2-114cda553828",
+            "title": "whisper",
+            "status": "completed",
+            "children": [],
+            "feedbackRecordedAt": "2026-06-17T09:49:12.635Z",
+            "feedbackStatus": "completed",
+            "createdAt": "2026-06-17T09:49:09.240Z",
+            "updatedAt": "2026-06-17T12:29:35.578Z"
+          },
+          {
+            "id": "4852a345-0054-49a3-8699-a74a45167ca7",
+            "title": "andrej-karpathy-skills",
+            "status": "completed",
+            "children": [],
+            "feedbackRecordedAt": "2026-06-17T09:49:30.220Z",
+            "feedbackStatus": "completed",
+            "createdAt": "2026-06-17T09:49:24.223Z",
+            "updatedAt": "2026-06-17T09:49:30.220Z"
+          },
+          {
+            "id": "0d732acb-f82f-47cd-8813-b9a24a363ac4",
+            "title": "guizang-social-card-skill",
+            "status": "completed",
+            "children": [],
+            "feedbackRecordedAt": "2026-06-17T09:50:16.353Z",
+            "feedbackStatus": "completed",
+            "createdAt": "2026-06-17T09:49:44.128Z",
+            "updatedAt": "2026-06-17T09:50:16.353Z"
+          },
+          {
+            "id": "e0778a48-4407-4768-81de-ad6d3c8a7a8d",
+            "title": "人味 skill",
+            "status": "completed",
+            "children": [],
+            "feedbackRecordedAt": "2026-06-17T09:50:17.271Z",
+            "feedbackStatus": "completed",
+            "createdAt": "2026-06-17T09:49:55.276Z",
+            "updatedAt": "2026-06-17T09:50:17.271Z"
+          },
+          {
+            "id": "232e4989-67c0-4e03-b09d-c2020fe8b3c8",
+            "title": "agent-skills",
+            "status": "completed",
+            "children": [],
+            "feedbackRecordedAt": "2026-06-17T09:50:18.154Z",
+            "feedbackStatus": "completed",
+            "createdAt": "2026-06-17T09:50:12.924Z",
+            "updatedAt": "2026-06-17T09:50:18.154Z"
+          },
+          {
+            "id": "4b4729a0-defe-48b6-b154-0db74044b087",
+            "title": "测试",
+            "status": "completed",
+            "children": [],
+            "createdAt": "2026-06-17T12:29:41.530Z",
+            "updatedAt": "2026-06-17T12:29:45.158Z",
+            "feedbackRecordedAt": "2026-06-17T12:29:45.158Z",
+            "feedbackStatus": "completed"
+          }
+        ],
+        "createdAt": "2026-06-17T09:48:27.914Z",
+        "updatedAt": "2026-06-17T09:48:27.914Z"
+      },
+      {
+        "id": "935ed100-83b1-4cb9-bc83-355bfe52f8cb-pick",
+        "title": "确定本周 5 个推荐",
+        "status": "not_started",
+        "children": [],
+        "createdAt": "2026-06-17T09:48:27.914Z",
+        "updatedAt": "2026-06-17T09:48:27.914Z"
+      },
+      {
+        "id": "935ed100-83b1-4cb9-bc83-355bfe52f8cb-draft",
+        "title": "成稿",
+        "status": "completed",
+        "children": [],
+        "createdAt": "2026-06-17T09:48:27.914Z",
+        "updatedAt": "2026-06-17T11:01:07.194Z",
+        "feedbackRecordedAt": "2026-06-17T11:01:07.194Z",
+        "feedbackStatus": "completed"
+      },
+      {
+        "id": "935ed100-83b1-4cb9-bc83-355bfe52f8cb-publish",
+        "title": "发布",
+        "status": "not_started",
+        "children": [
+          {
+            "id": "935ed100-83b1-4cb9-bc83-355bfe52f8cb-publish-1",
+            "title": "抖音",
+            "status": "not_started",
+            "children": [],
+            "createdAt": "2026-06-17T09:48:27.914Z",
+            "updatedAt": "2026-06-17T09:48:27.914Z"
+          },
+          {
+            "id": "935ed100-83b1-4cb9-bc83-355bfe52f8cb-publish-2",
+            "title": "知乎",
+            "status": "not_started",
+            "children": [],
+            "createdAt": "2026-06-17T09:48:27.914Z",
+            "updatedAt": "2026-06-17T09:48:27.914Z"
+          },
+          {
+            "id": "935ed100-83b1-4cb9-bc83-355bfe52f8cb-publish-3",
+            "title": "B站",
+            "status": "not_started",
+            "children": [],
+            "createdAt": "2026-06-17T09:48:27.914Z",
+            "updatedAt": "2026-06-17T09:48:27.914Z"
+          },
+          {
+            "id": "935ed100-83b1-4cb9-bc83-355bfe52f8cb-publish-4",
+            "title": "小红书",
+            "status": "not_started",
+            "children": [],
+            "createdAt": "2026-06-17T09:48:27.914Z",
+            "updatedAt": "2026-06-17T09:48:27.914Z"
+          },
+          {
+            "id": "935ed100-83b1-4cb9-bc83-355bfe52f8cb-publish-5",
+            "title": "编程导航",
+            "status": "not_started",
+            "children": [],
+            "createdAt": "2026-06-17T09:48:27.914Z",
+            "updatedAt": "2026-06-17T09:48:27.914Z"
+          },
+          {
+            "id": "935ed100-83b1-4cb9-bc83-355bfe52f8cb-publish-6",
+            "title": "稀土掘金",
+            "status": "not_started",
+            "children": [],
+            "createdAt": "2026-06-17T09:48:27.914Z",
+            "updatedAt": "2026-06-17T09:48:27.914Z"
+          }
+        ],
+        "createdAt": "2026-06-17T09:48:27.914Z",
+        "updatedAt": "2026-06-17T09:48:27.914Z"
+      }
+    ],
+    "createdAt": "2026-06-17T09:48:27.914Z",
+    "updatedAt": "2026-06-17T09:48:27.914Z"
+  }
+}

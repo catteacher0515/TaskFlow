@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -21,63 +21,126 @@ const appState: AppState = {
       templateSnapshot: {
         templateId: "weekly-github-picks",
         templateName: "每周 GitHub 精选",
-        stages: [
-          { id: "collect", name: "候选收集" },
-          { id: "hands_on", name: "亲测" }
-        ],
-        progressObject: {
-          name: "候选仓库",
-          fields: ["repoName", "url"],
-          states: [
-            { id: "untested", name: "未测", category: "open" },
-            { id: "selected", name: "入选", category: "concluded" }
-          ],
-          feedbackStateIds: ["selected"]
-        },
-        slots: [
-          { id: "slot-1", name: "槽位 1" },
-          { id: "slot-2", name: "槽位 2" }
-        ],
+        stages: [],
+        slots: [],
         minimumActions: [],
         warningRules: {}
       },
       recurrence: {
         kind: "weekly"
       },
-      stages: [
-        { id: "collect", name: "候选收集", status: "completed" },
-        { id: "hands_on", name: "亲测", status: "active" }
-      ],
-      progressObjects: [
-        {
-          id: "repo-1",
-          title: "owner/repo",
-          stateId: "selected",
-          fields: { repoName: "owner/repo", url: "https://github.com/owner/repo" },
-          createdAt: "2026-06-15T00:00:00.000Z",
-          updatedAt: "2026-06-15T00:00:00.000Z"
-        },
-        {
-          id: "repo-2",
-          title: "another/repo",
-          stateId: "untested",
-          fields: { repoName: "another/repo" },
-          createdAt: "2026-06-15T00:00:00.000Z",
-          updatedAt: "2026-06-15T00:00:00.000Z"
-        }
-      ],
-      slots: [
-        {
-          id: "slot-1",
-          name: "槽位 1",
-          progressObjectId: "repo-1",
-          filledAt: "2026-06-15T01:00:00.000Z"
-        },
-        {
-          id: "slot-2",
-          name: "槽位 2"
-        }
-      ],
+      stages: [],
+      progressObjects: [],
+      slots: [],
+      taskTree: {
+        id: "project-1-root",
+        title: "每周 GitHub 精选 2026-W25",
+        status: "not_started",
+        children: [
+          {
+            id: "project-1-hands-on",
+            title: "亲测候选仓库",
+            status: "active",
+            children: [
+              {
+                id: "project-1-candidate-1",
+                title: "whisper",
+                status: "completed",
+                children: [],
+                createdAt: "2026-06-15T00:00:00.000Z",
+                updatedAt: "2026-06-15T00:00:00.000Z",
+                feedbackRecordedAt: "2026-06-15T00:00:00.000Z",
+                feedbackStatus: "completed"
+              },
+              {
+                id: "project-1-candidate-2",
+                title: "llms.txt",
+                status: "unhandled",
+                children: [],
+                createdAt: "2026-06-15T00:00:00.000Z",
+                updatedAt: "2026-06-15T00:00:00.000Z"
+              }
+            ],
+            createdAt: "2026-06-15T00:00:00.000Z",
+            updatedAt: "2026-06-15T00:00:00.000Z"
+          },
+          {
+            id: "project-1-pick",
+            title: "确定本周 5 个推荐",
+            status: "not_started",
+            children: [],
+            createdAt: "2026-06-15T00:00:00.000Z",
+            updatedAt: "2026-06-15T00:00:00.000Z"
+          },
+          {
+            id: "project-1-draft",
+            title: "成稿",
+            status: "not_started",
+            children: [],
+            createdAt: "2026-06-15T00:00:00.000Z",
+            updatedAt: "2026-06-15T00:00:00.000Z"
+          },
+          {
+            id: "project-1-publish",
+            title: "发布",
+            status: "not_started",
+            children: [
+              {
+                id: "project-1-publish-1",
+                title: "抖音",
+                status: "not_started",
+                children: [],
+                createdAt: "2026-06-15T00:00:00.000Z",
+                updatedAt: "2026-06-15T00:00:00.000Z"
+              },
+              {
+                id: "project-1-publish-2",
+                title: "知乎",
+                status: "not_started",
+                children: [],
+                createdAt: "2026-06-15T00:00:00.000Z",
+                updatedAt: "2026-06-15T00:00:00.000Z"
+              },
+              {
+                id: "project-1-publish-3",
+                title: "B站",
+                status: "not_started",
+                children: [],
+                createdAt: "2026-06-15T00:00:00.000Z",
+                updatedAt: "2026-06-15T00:00:00.000Z"
+              },
+              {
+                id: "project-1-publish-4",
+                title: "小红书",
+                status: "not_started",
+                children: [],
+                createdAt: "2026-06-15T00:00:00.000Z",
+                updatedAt: "2026-06-15T00:00:00.000Z"
+              },
+              {
+                id: "project-1-publish-5",
+                title: "编程导航",
+                status: "not_started",
+                children: [],
+                createdAt: "2026-06-15T00:00:00.000Z",
+                updatedAt: "2026-06-15T00:00:00.000Z"
+              },
+              {
+                id: "project-1-publish-6",
+                title: "稀土掘金",
+                status: "not_started",
+                children: [],
+                createdAt: "2026-06-15T00:00:00.000Z",
+                updatedAt: "2026-06-15T00:00:00.000Z"
+              }
+            ],
+            createdAt: "2026-06-15T00:00:00.000Z",
+            updatedAt: "2026-06-15T00:00:00.000Z"
+          }
+        ],
+        createdAt: "2026-06-15T00:00:00.000Z",
+        updatedAt: "2026-06-15T00:00:00.000Z"
+      },
       createdAt: "2026-06-15T00:00:00.000Z",
       updatedAt: "2026-06-15T00:00:00.000Z"
     },
@@ -165,11 +228,57 @@ describe("App", () => {
     };
   }
 
+  function buildRelativeCreatedAt(daysOffset: number) {
+    const now = new Date();
+    const localDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + daysOffset, 12, 0, 0, 0);
+    return localDate.toISOString();
+  }
+
+  function buildRelativeDateInput(daysOffset: number) {
+    const now = new Date();
+    const localDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + daysOffset, 12, 0, 0, 0);
+    const year = localDate.getFullYear();
+    const month = String(localDate.getMonth() + 1).padStart(2, "0");
+    const day = String(localDate.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  }
+
+  function buildDayGroupLabel(daysOffset: number, count: number) {
+    const dateLabel = buildRelativeDateInput(daysOffset);
+    if (daysOffset === 0) {
+      return `${dateLabel} · 今天 · ${count} 条`;
+    }
+
+    if (daysOffset === -1) {
+      return `${dateLabel} · 昨天 · ${count} 条`;
+    }
+
+    return `${dateLabel} · ${count} 条`;
+  }
+
+  function buildWeekGroupLabel(daysOffset: number, count: number) {
+    const date = new Date(buildRelativeCreatedAt(daysOffset));
+    const local = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    const day = (local.getDay() + 6) % 7;
+    local.setDate(local.getDate() - day + 3);
+    const firstThursday = new Date(local.getFullYear(), 0, 4);
+    const firstDay = (firstThursday.getDay() + 6) % 7;
+    firstThursday.setDate(firstThursday.getDate() - firstDay + 3);
+    const week = 1 + Math.round((local.getTime() - firstThursday.getTime()) / 604800000);
+    return `${local.getFullYear()} 第 ${week} 周 · ${count} 条`;
+  }
+
+  function buildMonthGroupLabel(daysOffset: number, count: number) {
+    const dateLabel = buildRelativeDateInput(daysOffset).slice(0, 7);
+    return `${dateLabel} · ${count} 条`;
+  }
+
   beforeEach(() => {
     mockState();
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     vi.restoreAllMocks();
   });
 
@@ -217,7 +326,8 @@ describe("App", () => {
     expect(screen.getByRole("heading", { name: "选择一个项目" })).toBeInTheDocument();
   });
 
-  it("shows templates and their configured progress object", async () => {
+  it("shows templates on the dedicated templates page instead of the workbench", async () => {
+    const user = userEvent.setup();
     mockState({
       ...appState,
       templates: [
@@ -245,7 +355,13 @@ describe("App", () => {
 
     render(<App />);
 
-    expect(await screen.findByText("模板管理")).toBeInTheDocument();
+    expect(await screen.findByText("当前面板")).toBeInTheDocument();
+    expect(screen.queryByText("模板管理")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "模板" }));
+
+    expect(screen.getByRole("heading", { name: "模板" })).toBeInTheDocument();
+    expect(screen.getByText("模板管理")).toBeInTheDocument();
     expect(screen.getByText("每周 GitHub 精选")).toBeInTheDocument();
     expect(screen.getByText("推进对象：候选仓库")).toBeInTheDocument();
   });
@@ -327,6 +443,449 @@ describe("App", () => {
 
     expect(screen.queryByText("槽位 2 已填入 another/repo")).not.toBeInTheDocument();
     expect(screen.getByText("不做了：临时分支")).toBeInTheDocument();
+  });
+
+  it("keeps the feedback page in browse mode by default", async () => {
+    const user = userEvent.setup();
+    mockState({
+      ...appState,
+      activity: [
+        ...appState.activity,
+        {
+          id: "activity-3",
+          projectId: "project-2",
+          kind: "small",
+          type: "entropy_reduced",
+          message: "不做了：临时分支",
+          createdAt: "2026-06-15T10:00:00.000Z"
+        }
+      ]
+    });
+
+    render(<App />);
+
+    await user.click(await screen.findByRole("button", { name: "查看全部反馈" }));
+
+    expect(screen.getByRole("button", { name: "批量管理" })).toBeInTheDocument();
+    expect(screen.queryByRole("checkbox", { name: "选择反馈：不做了：临时分支" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /批量删除/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /一键删除当前筛选结果/ })).not.toBeInTheDocument();
+  });
+
+  it("filters feedback by quick time ranges and custom date range", async () => {
+    const user = userEvent.setup();
+
+    mockState({
+      ...appState,
+      activity: [
+        {
+          id: "activity-today",
+          projectId: "project-1",
+          kind: "small",
+          message: "今天的反馈",
+          createdAt: buildRelativeCreatedAt(0)
+        },
+        {
+          id: "activity-yesterday",
+          projectId: "project-1",
+          kind: "small",
+          message: "昨天的反馈",
+          createdAt: buildRelativeCreatedAt(-1)
+        },
+        {
+          id: "activity-last7",
+          projectId: "project-2",
+          kind: "big",
+          message: "七天内反馈",
+          createdAt: buildRelativeCreatedAt(-6)
+        },
+        {
+          id: "activity-may-1",
+          projectId: "project-2",
+          kind: "small",
+          message: "五月反馈一",
+          createdAt: buildRelativeCreatedAt(-20)
+        },
+        {
+          id: "activity-may-2",
+          projectId: "project-2",
+          kind: "big",
+          message: "五月反馈二",
+          createdAt: buildRelativeCreatedAt(-21)
+        }
+      ]
+    });
+
+    render(<App />);
+
+    await user.click(await screen.findByRole("button", { name: "查看全部反馈" }));
+
+    const timeFilterRow = screen.getByLabelText("时间筛选");
+    await user.click(within(timeFilterRow).getByRole("button", { name: "今天" }));
+
+    expect(screen.getByText("今天的反馈")).toBeInTheDocument();
+    expect(screen.queryByText("昨天的反馈")).not.toBeInTheDocument();
+    expect(screen.queryByText("七天内反馈")).not.toBeInTheDocument();
+
+    await user.click(within(timeFilterRow).getByRole("button", { name: "近 7 天" }));
+
+    expect(screen.getByText("今天的反馈")).toBeInTheDocument();
+    expect(screen.getByText("昨天的反馈")).toBeInTheDocument();
+    expect(screen.getByText("七天内反馈")).toBeInTheDocument();
+    expect(screen.queryByText("五月反馈一")).not.toBeInTheDocument();
+
+    await user.click(within(timeFilterRow).getByRole("button", { name: "自定义" }));
+    fireEvent.change(screen.getByLabelText("开始日期"), { target: { value: buildRelativeDateInput(-21) } });
+    fireEvent.change(screen.getByLabelText("结束日期"), { target: { value: buildRelativeDateInput(-20) } });
+
+    expect(screen.getByText("五月反馈一")).toBeInTheDocument();
+    expect(screen.getByText("五月反馈二")).toBeInTheDocument();
+    expect(screen.queryByText("今天的反馈")).not.toBeInTheDocument();
+    expect(screen.queryByText("七天内反馈")).not.toBeInTheDocument();
+  });
+
+  it("groups feedback by day, week, and month", async () => {
+    const user = userEvent.setup();
+
+    mockState({
+      ...appState,
+      activity: [
+        {
+          id: "activity-today",
+          projectId: "project-1",
+          kind: "small",
+          message: "今天的反馈",
+          createdAt: buildRelativeCreatedAt(0)
+        },
+        {
+          id: "activity-yesterday",
+          projectId: "project-1",
+          kind: "small",
+          message: "昨天的反馈",
+          createdAt: buildRelativeCreatedAt(-1)
+        },
+        {
+          id: "activity-last-week",
+          projectId: "project-2",
+          kind: "big",
+          message: "上周反馈",
+          createdAt: buildRelativeCreatedAt(-7)
+        },
+        {
+          id: "activity-may-1",
+          projectId: "project-2",
+          kind: "small",
+          message: "五月反馈一",
+          createdAt: buildRelativeCreatedAt(-20)
+        },
+        {
+          id: "activity-may-2",
+          projectId: "project-2",
+          kind: "big",
+          message: "五月反馈二",
+          createdAt: buildRelativeCreatedAt(-21)
+        }
+      ]
+    });
+
+    render(<App />);
+
+    await user.click(await screen.findByRole("button", { name: "查看全部反馈" }));
+
+    expect(screen.getByText(buildDayGroupLabel(0, 1))).toBeInTheDocument();
+    expect(screen.getByText(buildDayGroupLabel(-1, 1))).toBeInTheDocument();
+
+    const groupingRow = screen.getByLabelText("反馈分组");
+    await user.click(within(groupingRow).getByRole("button", { name: "按周" }));
+
+    expect(screen.getByText(buildWeekGroupLabel(0, 2))).toBeInTheDocument();
+    expect(screen.getByText(buildWeekGroupLabel(-7, 1))).toBeInTheDocument();
+    expect(screen.getByText(buildWeekGroupLabel(-20, 2))).toBeInTheDocument();
+    expect(screen.queryByText(buildDayGroupLabel(0, 1))).not.toBeInTheDocument();
+
+    await user.click(within(groupingRow).getByRole("button", { name: "按月" }));
+
+    expect(screen.getByText(buildMonthGroupLabel(0, 3))).toBeInTheDocument();
+    expect(screen.getByText(buildMonthGroupLabel(-20, 2))).toBeInTheDocument();
+    expect(screen.queryByText(buildWeekGroupLabel(0, 2))).not.toBeInTheDocument();
+  });
+
+  it("deletes a feedback item from the feedback page after confirmation", async () => {
+    const user = userEvent.setup();
+    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
+    const initialState = {
+      ...appState,
+      activity: [
+        ...appState.activity,
+        {
+          id: "activity-3",
+          projectId: "project-2",
+          kind: "small" as const,
+          type: "entropy_reduced" as const,
+          message: "不做了：临时分支",
+          createdAt: "2026-06-15T10:00:00.000Z"
+        }
+      ]
+    };
+    const nextState = {
+      ...initialState,
+      activity: initialState.activity.filter((item) => item.id !== "activity-3")
+    };
+
+    globalThis.fetch = vi.fn(async (input, init) => {
+      const path = String(input);
+      if (path === "/api/state") {
+        return jsonResponse(initialState);
+      }
+      if (path === "/api/activity/activity-3/revoke") {
+        expect(init).toMatchObject({
+          method: "POST",
+          body: JSON.stringify({})
+        });
+        return jsonResponse(nextState);
+      }
+      return jsonResponse(initialState);
+    });
+
+    render(<App />);
+
+    await user.click(await screen.findByRole("button", { name: "查看全部反馈" }));
+    await user.click(screen.getByRole("button", { name: "删除反馈：不做了：临时分支" }));
+
+    expect(confirmSpy).toHaveBeenCalledWith("确定要删除这条反馈吗？删除后它会从界面隐藏，但底层历史记录会保留。");
+    expect(fetch).toHaveBeenCalledWith(
+      "/api/activity/activity-3/revoke",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({})
+      })
+    );
+    expect(screen.queryByText("不做了：临时分支")).not.toBeInTheDocument();
+    expect(screen.getByText("共 2")).toBeInTheDocument();
+  });
+
+  it("batch deletes selected feedback items from the feedback page after confirmation", async () => {
+    const user = userEvent.setup();
+    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
+    const initialState = {
+      ...appState,
+      activity: [
+        ...appState.activity,
+        {
+          id: "activity-3",
+          projectId: "project-2",
+          kind: "small" as const,
+          type: "entropy_reduced" as const,
+          message: "不做了：临时分支",
+          createdAt: "2026-06-15T10:00:00.000Z"
+        },
+        {
+          id: "activity-4",
+          projectId: "project-2",
+          kind: "small" as const,
+          type: "task_completed" as const,
+          message: "任务完成：补充截图",
+          createdAt: "2026-06-15T10:30:00.000Z"
+        }
+      ]
+    };
+    const afterFirstDelete = {
+      ...initialState,
+      activity: initialState.activity.filter((item) => item.id !== "activity-3")
+    };
+    const afterSecondDelete = {
+      ...initialState,
+      activity: initialState.activity.filter((item) => item.id !== "activity-3" && item.id !== "activity-4")
+    };
+
+    globalThis.fetch = vi.fn(async (input, init) => {
+      const path = String(input);
+      if (path === "/api/state") {
+        return jsonResponse(initialState);
+      }
+      if (path === "/api/activity/activity-3/revoke") {
+        expect(init).toMatchObject({
+          method: "POST",
+          body: JSON.stringify({})
+        });
+        return jsonResponse(afterFirstDelete);
+      }
+      if (path === "/api/activity/activity-4/revoke") {
+        expect(init).toMatchObject({
+          method: "POST",
+          body: JSON.stringify({})
+        });
+        return jsonResponse(afterSecondDelete);
+      }
+      return jsonResponse(initialState);
+    });
+
+    render(<App />);
+
+    await user.click(await screen.findByRole("button", { name: "查看全部反馈" }));
+    await user.click(screen.getByRole("button", { name: "批量管理" }));
+    await user.click(screen.getByRole("checkbox", { name: "选择反馈：不做了：临时分支" }));
+    await user.click(screen.getByRole("checkbox", { name: "选择反馈：任务完成：补充截图" }));
+    await user.click(screen.getByRole("button", { name: "批量删除 2 条" }));
+
+    expect(confirmSpy).toHaveBeenCalledWith("确定要批量删除这 2 条反馈吗？删除后它们会从界面隐藏，但底层历史记录会保留。");
+    expect(fetch).toHaveBeenCalledWith(
+      "/api/activity/activity-3/revoke",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({})
+      })
+    );
+    expect(fetch).toHaveBeenCalledWith(
+      "/api/activity/activity-4/revoke",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({})
+      })
+    );
+    await waitFor(() => {
+      expect(screen.queryByText("不做了：临时分支")).not.toBeInTheDocument();
+      expect(screen.queryByText("任务完成：补充截图")).not.toBeInTheDocument();
+    });
+  });
+
+  it("deletes all current filtered feedback results after confirmation", async () => {
+    const user = userEvent.setup();
+    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
+    const initialState = {
+      ...appState,
+      activity: [
+        {
+          id: "activity-today",
+          projectId: "project-1",
+          kind: "small" as const,
+          type: "entropy_reduced" as const,
+          message: "今天的反馈",
+          createdAt: buildRelativeCreatedAt(0)
+        },
+        {
+          id: "activity-yesterday",
+          projectId: "project-1",
+          kind: "small" as const,
+          type: "task_completed" as const,
+          message: "昨天的反馈",
+          createdAt: buildRelativeCreatedAt(-1)
+        },
+        {
+          id: "activity-last7",
+          projectId: "project-2",
+          kind: "big" as const,
+          type: "project_completed" as const,
+          message: "七天内反馈",
+          createdAt: buildRelativeCreatedAt(-6)
+        },
+        {
+          id: "activity-may-1",
+          projectId: "project-2",
+          kind: "small" as const,
+          type: "entropy_reduced" as const,
+          message: "五月反馈一",
+          createdAt: buildRelativeCreatedAt(-20)
+        },
+        {
+          id: "activity-may-2",
+          projectId: "project-2",
+          kind: "big" as const,
+          type: "progress_concluded" as const,
+          message: "五月反馈二",
+          createdAt: buildRelativeCreatedAt(-21)
+        }
+      ]
+    };
+    const afterTodayDelete = {
+      ...initialState,
+      activity: initialState.activity.filter((item) => item.id !== "activity-today")
+    };
+    const afterYesterdayDelete = {
+      ...initialState,
+      activity: initialState.activity.filter((item) => !["activity-today", "activity-yesterday"].includes(item.id))
+    };
+    const afterLast7Delete = {
+      ...initialState,
+      activity: initialState.activity.filter((item) =>
+        !["activity-today", "activity-yesterday", "activity-last7"].includes(item.id)
+      )
+    };
+
+    globalThis.fetch = vi.fn(async (input, init) => {
+      const path = String(input);
+      if (path === "/api/state") {
+        return jsonResponse(initialState);
+      }
+      if (path === "/api/activity/activity-today/revoke") {
+        expect(init).toMatchObject({
+          method: "POST",
+          body: JSON.stringify({})
+        });
+        return jsonResponse(afterTodayDelete);
+      }
+      if (path === "/api/activity/activity-yesterday/revoke") {
+        expect(init).toMatchObject({
+          method: "POST",
+          body: JSON.stringify({})
+        });
+        return jsonResponse(afterYesterdayDelete);
+      }
+      if (path === "/api/activity/activity-last7/revoke") {
+        expect(init).toMatchObject({
+          method: "POST",
+          body: JSON.stringify({})
+        });
+        return jsonResponse(afterLast7Delete);
+      }
+      return jsonResponse(initialState);
+    });
+
+    render(<App />);
+
+    await user.click(await screen.findByRole("button", { name: "查看全部反馈" }));
+    await user.click(screen.getByRole("button", { name: "批量管理" }));
+    const timeFilterRow = screen.getByLabelText("时间筛选");
+    await user.click(within(timeFilterRow).getByRole("button", { name: "近 7 天" }));
+    await user.click(screen.getByRole("button", { name: "一键删除当前筛选结果（3 条）" }));
+
+    expect(confirmSpy).toHaveBeenCalledWith(
+      "确定要删除当前筛选结果中的 3 条反馈吗？这只会移除当前筛选出的反馈，底层历史记录会保留。"
+    );
+    expect(fetch).toHaveBeenCalledWith(
+      "/api/activity/activity-today/revoke",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({})
+      })
+    );
+    expect(fetch).toHaveBeenCalledWith(
+      "/api/activity/activity-yesterday/revoke",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({})
+      })
+    );
+    expect(fetch).toHaveBeenCalledWith(
+      "/api/activity/activity-last7/revoke",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({})
+      })
+    );
+
+    await waitFor(() => {
+      expect(screen.queryByText("今天的反馈")).not.toBeInTheDocument();
+      expect(screen.queryByText("昨天的反馈")).not.toBeInTheDocument();
+      expect(screen.queryByText("七天内反馈")).not.toBeInTheDocument();
+    });
+
+    expect(screen.getByText("暂无反馈")).toBeInTheDocument();
+    expect(screen.getByText("共 2")).toBeInTheDocument();
+
+    await user.click(within(timeFilterRow).getByRole("button", { name: "全部" }));
+    expect(screen.getByText("五月反馈一")).toBeInTheDocument();
+    expect(screen.getByText("五月反馈二")).toBeInTheDocument();
   });
 
   it("shows focus mode when active", async () => {
@@ -1183,165 +1742,101 @@ describe("App", () => {
     expect(await screen.findByRole("button", { name: "暂停项目" })).toBeInTheDocument();
   });
 
-  it("creates candidate repositories from the detail panel", async () => {
+  it("renders the weekly GitHub project as a prebuilt todo tree", async () => {
+    render(<App />);
+
+    expect(await screen.findByRole("heading", { name: "每周 GitHub 精选 2026-W25" })).toBeInTheDocument();
+    expect(screen.getByText("任务拆解")).toBeInTheDocument();
+    expect(screen.getByText("亲测候选仓库")).toBeInTheDocument();
+    expect(screen.getByText("确定本周 5 个推荐")).toBeInTheDocument();
+    expect(screen.getByText("抖音")).toBeInTheDocument();
+    expect(screen.getByText("知乎")).toBeInTheDocument();
+    expect(screen.queryByText("收集候选仓库")).not.toBeInTheDocument();
+    expect(screen.queryByText("推荐 1")).not.toBeInTheDocument();
+    expect(screen.queryByText("写推荐理由")).not.toBeInTheDocument();
+    expect(screen.queryByText("阶段进度")).not.toBeInTheDocument();
+    expect(screen.queryByText("成果槽位")).not.toBeInTheDocument();
+  });
+
+  it("renders weekly candidate actions and a derived selected list", async () => {
+    render(<App />);
+
+    expect(await screen.findByRole("button", { name: "将 whisper 标记为入选" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "将 whisper 标记为淘汰" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "将 whisper 标记为暂缓" })).toBeInTheDocument();
+    expect(screen.getByText("已入选 1")).toBeInTheDocument();
+    expect(screen.getAllByText("whisper").length).toBeGreaterThan(1);
+    expect(screen.getByRole("checkbox", { name: "llms.txt" })).toBeChecked();
+    expect(screen.getByRole("checkbox", { name: "whisper" })).toBeChecked();
+  });
+
+  it("allows completing the derived weekly pick task itself", async () => {
     const user = userEvent.setup();
-    const nextProject = {
+    const rootTask = appState.projects[0].taskTree;
+
+    if (!rootTask) {
+      throw new Error("weekly test fixture is missing task tree");
+    }
+
+    const completedProject = {
       ...appState.projects[0],
-      progressObjects: [
-        ...appState.projects[0].progressObjects,
+      taskTree: {
+        ...rootTask,
+        children: rootTask.children.map((task) =>
+          task.id === "project-1-pick"
+            ? {
+                ...task,
+                status: "completed" as const,
+                feedbackRecordedAt: "2026-06-15T11:00:00.000Z",
+                feedbackStatus: "completed" as const
+              }
+            : task
+        )
+      }
+    };
+    const nextState = {
+      ...appState,
+      projects: [completedProject, appState.projects[1]],
+      activity: [
+        ...appState.activity,
         {
-          id: "repo-3",
-          title: "new/repo",
-          stateId: "untested",
-          fields: {
-            repoName: "new/repo",
-            url: "https://github.com/new/repo"
-          },
-          createdAt: "2026-06-15T02:00:00.000Z",
-          updatedAt: "2026-06-15T02:00:00.000Z"
+          id: "activity-pick-complete",
+          projectId: "project-1",
+          kind: "big" as const,
+          type: "task_completed" as const,
+          message: "任务完成：确定本周 5 个推荐",
+          taskId: "project-1-pick",
+          createdAt: "2026-06-15T11:00:00.000Z"
         }
       ]
     };
-    const nextState = replaceProject(nextProject);
 
-    globalThis.fetch = vi.fn(async (input) => {
-      const path = String(input);
-      return jsonResponse(path === "/api/state" ? appState : nextState);
-    });
-
-    render(<App />);
-
-    await user.type(await screen.findByLabelText("候选仓库名称"), "new/repo");
-    await user.type(screen.getByLabelText("GitHub URL"), "https://github.com/new/repo");
-    await user.click(screen.getByRole("button", { name: "添加候选" }));
-
-    expect(fetch).toHaveBeenCalledWith(
-      "/api/projects/project-1/progress-objects",
-      expect.objectContaining({
-        method: "POST",
-        body: JSON.stringify({
-          title: "new/repo",
-          fields: {
-            repoName: "new/repo",
-            url: "https://github.com/new/repo"
-          }
-        })
-      })
-    );
-    expect(await screen.findByText("new/repo")).toBeInTheDocument();
-  });
-
-  it("updates candidate status and fills recommendation slots from the detail panel", async () => {
-    const user = userEvent.setup();
-    const selectedProject = {
-      ...appState.projects[0],
-      progressObjects: appState.projects[0].progressObjects.map((object) =>
-        object.id === "repo-2" ? { ...object, stateId: "selected" } : object
-      )
-    };
-    const filledProject = {
-      ...selectedProject,
-      slots: selectedProject.slots.map((slot) =>
-        slot.id === "slot-2"
-          ? { ...slot, progressObjectId: "repo-2", filledAt: "2026-06-15T03:00:00.000Z" }
-          : slot
-      )
-    };
-    const selectedState = replaceProject(selectedProject);
-    const filledState = replaceProject(filledProject);
-
-    globalThis.fetch = vi.fn(async (input) => {
+    globalThis.fetch = vi.fn(async (input, init) => {
       const path = String(input);
       if (path === "/api/state") {
         return jsonResponse(appState);
       }
-      if (path.includes("/progress-objects/repo-2/state")) {
-        return jsonResponse(selectedState);
-      }
-      if (path.includes("/slots/slot-2/fill")) {
-        return jsonResponse(filledState);
+      if (path === "/api/projects/project-1/tasks/project-1-pick/status") {
+        expect(init).toMatchObject({
+          method: "PATCH",
+          body: JSON.stringify({ status: "completed" })
+        });
+        return jsonResponse(nextState);
       }
       return jsonResponse(appState);
     });
 
     render(<App />);
 
-    await user.click(await screen.findByRole("button", { name: "将 another/repo 标记为入选" }));
+    await user.click(await screen.findByRole("checkbox", { name: "确定本周 5 个推荐" }));
 
     expect(fetch).toHaveBeenCalledWith(
-      "/api/projects/project-1/progress-objects/repo-2/state",
+      "/api/projects/project-1/tasks/project-1-pick/status",
       expect.objectContaining({
         method: "PATCH",
-        body: JSON.stringify({ nextStateId: "selected", note: "界面更新状态" })
+        body: JSON.stringify({ status: "completed" })
       })
     );
-
-    await user.selectOptions(screen.getByLabelText("选择填入槽位 2 的候选"), "repo-2");
-    await user.click(screen.getByRole("button", { name: "填入槽位 2" }));
-
-    expect(fetch).toHaveBeenCalledWith(
-      "/api/projects/project-1/slots/slot-2/fill",
-      expect.objectContaining({
-        method: "POST",
-        body: JSON.stringify({ progressObjectId: "repo-2" })
-      })
-    );
-    expect(await screen.findAllByText("another/repo")).toHaveLength(2);
-  });
-
-  it("does not render the current candidate state as an action button", async () => {
-    render(<App />);
-
-    expect(await screen.findAllByText("入选")).not.toHaveLength(0);
-    expect(screen.queryByRole("button", { name: "将 owner/repo 标记为入选" })).not.toBeInTheDocument();
-  });
-
-  it("renders project progress stages, slots, and progress objects", async () => {
-    render(<App />);
-
-    expect(await screen.findByRole("heading", { name: "每周 GitHub 精选 2026-W25" })).toBeInTheDocument();
-    expect(screen.getByText("阶段进度")).toBeInTheDocument();
-    expect(screen.getByText("槽位 1 / 2")).toBeInTheDocument();
-    expect(screen.getByText("槽位 1")).toBeInTheDocument();
-    expect(screen.getByText("槽位 2")).toBeInTheDocument();
-    expect(screen.getAllByText("owner/repo").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("入选").length).toBeGreaterThan(0);
-    expect(screen.queryByText("selected")).not.toBeInTheDocument();
-  });
-
-  it("distinguishes missing slot objects from empty slots", async () => {
-    mockState({
-      ...appState,
-      projects: [
-        {
-          ...appState.projects[0],
-          slots: [
-            { id: "slot-1", name: "槽位 1", progressObjectId: "missing-repo" },
-            { id: "slot-2", name: "槽位 2" }
-          ]
-        }
-      ]
-    });
-
-    render(<App />);
-
-    expect(await screen.findByText("对象缺失：missing-repo")).toBeInTheDocument();
-    expect(screen.getByText("未填")).toBeInTheDocument();
-  });
-
-  it("shows an empty state when a project has no slots", async () => {
-    mockState({
-      ...appState,
-      projects: [
-        {
-          ...appState.projects[0],
-          slots: []
-        }
-      ]
-    });
-
-    render(<App />);
-
-    expect(await screen.findByText("暂无成果槽位")).toBeInTheDocument();
+    expect(await screen.findByRole("checkbox", { name: "确定本周 5 个推荐" })).toBeChecked();
   });
 });

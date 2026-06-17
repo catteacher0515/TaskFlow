@@ -1,0 +1,145 @@
+{
+  "id": "c1976774-a6ec-4dbe-9873-7e25e725eeb5",
+  "title": "很好",
+  "status": "completed",
+  "templateId": "weekly-github-picks",
+  "templateSnapshot": {
+    "templateId": "weekly-github-picks",
+    "templateName": "每周 GitHub 精选",
+    "stages": [],
+    "slots": [],
+    "minimumActions": [
+      {
+        "id": "test-one-repo",
+        "label": "亲测 1 个候选仓库"
+      },
+      {
+        "id": "confirm-one-pick",
+        "label": "确定 1 个推荐"
+      },
+      {
+        "id": "write-one-reason",
+        "label": "写完 1 条推荐理由"
+      },
+      {
+        "id": "finish-one-section",
+        "label": "完成 1 个发布环节"
+      }
+    ],
+    "warningRules": {
+      "parallelLimit": {
+        "useGlobalLimit": true
+      },
+      "stagnation": {
+        "daysWithoutActivity": 2
+      }
+    }
+  },
+  "recurrence": {
+    "kind": "weekly"
+  },
+  "stages": [],
+  "progressObjects": [],
+  "slots": [],
+  "createdAt": "2026-06-17T10:06:48.289Z",
+  "updatedAt": "2026-06-17T10:24:49.072Z",
+  "taskTree": {
+    "id": "c1976774-a6ec-4dbe-9873-7e25e725eeb5-root",
+    "title": "很好",
+    "status": "not_started",
+    "children": [
+      {
+        "id": "c1976774-a6ec-4dbe-9873-7e25e725eeb5-collect",
+        "title": "收集候选仓库",
+        "status": "not_started",
+        "children": [],
+        "createdAt": "2026-06-17T10:06:48.289Z",
+        "updatedAt": "2026-06-17T10:06:48.289Z"
+      },
+      {
+        "id": "c1976774-a6ec-4dbe-9873-7e25e725eeb5-hands-on",
+        "title": "亲测候选仓库",
+        "status": "not_started",
+        "children": [],
+        "createdAt": "2026-06-17T10:06:48.289Z",
+        "updatedAt": "2026-06-17T10:06:48.289Z"
+      },
+      {
+        "id": "c1976774-a6ec-4dbe-9873-7e25e725eeb5-pick",
+        "title": "确定本周 5 个推荐",
+        "status": "not_started",
+        "children": [
+          {
+            "id": "c1976774-a6ec-4dbe-9873-7e25e725eeb5-pick-1",
+            "title": "推荐 1",
+            "status": "not_started",
+            "children": [],
+            "createdAt": "2026-06-17T10:06:48.289Z",
+            "updatedAt": "2026-06-17T10:06:48.289Z"
+          },
+          {
+            "id": "c1976774-a6ec-4dbe-9873-7e25e725eeb5-pick-2",
+            "title": "推荐 2",
+            "status": "not_started",
+            "children": [],
+            "createdAt": "2026-06-17T10:06:48.289Z",
+            "updatedAt": "2026-06-17T10:06:48.289Z"
+          },
+          {
+            "id": "c1976774-a6ec-4dbe-9873-7e25e725eeb5-pick-3",
+            "title": "推荐 3",
+            "status": "not_started",
+            "children": [],
+            "createdAt": "2026-06-17T10:06:48.289Z",
+            "updatedAt": "2026-06-17T10:06:48.289Z"
+          },
+          {
+            "id": "c1976774-a6ec-4dbe-9873-7e25e725eeb5-pick-4",
+            "title": "推荐 4",
+            "status": "not_started",
+            "children": [],
+            "createdAt": "2026-06-17T10:06:48.289Z",
+            "updatedAt": "2026-06-17T10:06:48.289Z"
+          },
+          {
+            "id": "c1976774-a6ec-4dbe-9873-7e25e725eeb5-pick-5",
+            "title": "推荐 5",
+            "status": "not_started",
+            "children": [],
+            "createdAt": "2026-06-17T10:06:48.289Z",
+            "updatedAt": "2026-06-17T10:06:48.289Z"
+          }
+        ],
+        "createdAt": "2026-06-17T10:06:48.289Z",
+        "updatedAt": "2026-06-17T10:06:48.289Z"
+      },
+      {
+        "id": "c1976774-a6ec-4dbe-9873-7e25e725eeb5-reasons",
+        "title": "写推荐理由",
+        "status": "not_started",
+        "children": [],
+        "createdAt": "2026-06-17T10:06:48.289Z",
+        "updatedAt": "2026-06-17T10:06:48.289Z"
+      },
+      {
+        "id": "c1976774-a6ec-4dbe-9873-7e25e725eeb5-draft",
+        "title": "成稿",
+        "status": "not_started",
+        "children": [],
+        "createdAt": "2026-06-17T10:06:48.289Z",
+        "updatedAt": "2026-06-17T10:06:48.289Z"
+      },
+      {
+        "id": "c1976774-a6ec-4dbe-9873-7e25e725eeb5-publish",
+        "title": "发布",
+        "status": "not_started",
+        "children": [],
+        "createdAt": "2026-06-17T10:06:48.289Z",
+        "updatedAt": "2026-06-17T10:06:48.289Z"
+      }
+    ],
+    "createdAt": "2026-06-17T10:06:48.289Z",
+    "updatedAt": "2026-06-17T10:06:48.289Z"
+  },
+  "completedFromStatus": "active"
+}

@@ -1,6 +1,10 @@
 import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import type { Project, ProgressObjectInstance, ProjectStatus, TaskNode, TaskNodeStatus } from "../../shared/types";
+import {
+  isWeeklyGithubProject,
+  weeklyGithubSelectedCandidates
+} from "../../shared/weeklyGithubProject";
 
 interface ProjectDetailProps {
   project?: Project;
@@ -72,6 +76,30 @@ function renderSlotValue(objects: ProgressObjectInstance[], progressObjectId?: s
 
   const object = findProgressObject(objects, progressObjectId);
   return object?.title ?? `对象缺失：${progressObjectId}`;
+}
+
+function findTaskNodeByTitle(rootTask: TaskNode, title: string) {
+  return rootTask.children.find((task) => task.title === title);
+}
+
+function weeklyCandidateStatusLabel(status: TaskNodeStatus) {
+  if (status === "completed") {
+    return "入选";
+  }
+
+  if (status === "dropped") {
+    return "淘汰";
+  }
+
+  if (status === "unhandled") {
+    return "暂缓";
+  }
+
+  if (status === "active") {
+    return "进行中";
+  }
+
+  return "未定";
 }
 
 function nextStatusAction(status: ProjectStatus) {
@@ -202,6 +230,10 @@ export function ProjectDetail({
     return state?.category === "concluded";
   });
   const rootTask = project.taskTree;
+  const isWeeklyProject = isWeeklyGithubProject(project);
+  const weeklyHandsOnTask = rootTask ? findTaskNodeByTitle(rootTask, "亲测候选仓库") : undefined;
+  const weeklyPickTask = rootTask ? findTaskNodeByTitle(rootTask, "确定本周 5 个推荐") : undefined;
+  const weeklySelectedCandidates = rootTask ? weeklyGithubSelectedCandidates(rootTask) : [];
   const contextTask = rootTask ? findTaskNode(rootTask, taskContextMenu?.taskId) : undefined;
 
   async function handleCreateProgressObject(event: FormEvent<HTMLFormElement>) {
@@ -278,14 +310,63 @@ export function ProjectDetail({
     }
   }
 
+  function renderWeeklyCandidateActions(task: TaskNode) {
+    if (!onUpdateTaskStatus || isReadOnly) {
+      return (
+        <div className="todo-meta">
+          <span className={`task-status status-${task.status}`}>{weeklyCandidateStatusLabel(task.status)}</span>
+        </div>
+      );
+    }
+
+    return (
+      <div className="object-actions">
+        <button
+          className="secondary-action compact"
+          type="button"
+          disabled={task.status === "completed"}
+          onClick={() => void handleTaskStatus(task, "completed")}
+        >
+          将 {task.title} 标记为入选
+        </button>
+        <button
+          className="secondary-action compact"
+          type="button"
+          disabled={task.status === "dropped"}
+          onClick={() => void handleTaskStatus(task, "dropped")}
+        >
+          将 {task.title} 标记为淘汰
+        </button>
+        <button
+          className="secondary-action compact"
+          type="button"
+          disabled={task.status === "unhandled"}
+          onClick={() => void handleTaskStatus(task, "unhandled")}
+        >
+          将 {task.title} 标记为暂缓
+        </button>
+      </div>
+    );
+  }
+
   function renderTaskNode(task: TaskNode, depth: number): JSX.Element {
     const progress = countTaskChildren(task);
     const isClosed = closedTaskStatuses.has(task.status);
-    const isChecked = task.status === "completed";
+    const isChecked = isWeeklyCandidateChildLike(task) ? isClosed : task.status === "completed";
+    const isWeeklyCandidateChild = Boolean(
+      isWeeklyProject && weeklyHandsOnTask && weeklyHandsOnTask.children.some((candidate) => candidate.id === task.id)
+    );
     const canAddChild = depth < 3 && !isClosed && Boolean(onAddTaskChild) && !isReadOnly;
     const canStart = task.status === "not_started" && Boolean(onUpdateTaskStatus) && !isReadOnly;
     const canToggleCheckbox =
-      Boolean(onUpdateTaskStatus) && task.status !== "dropped" && task.status !== "unhandled" && !isReadOnly;
+      Boolean(onUpdateTaskStatus) &&
+      task.status !== "dropped" &&
+      task.status !== "unhandled" &&
+      !isReadOnly &&
+      !isWeeklyCandidateChild;
+    const hideTaskAddForm = Boolean(
+      isWeeklyProject && ((weeklyPickTask && weeklyPickTask.id === task.id) || isWeeklyCandidateChild)
+    );
 
     return (
       <li className={`task-node depth-${depth}`} key={task.id}>
@@ -312,7 +393,9 @@ export function ProjectDetail({
             </label>
 
             <div className="todo-meta">
-              {progress.total > 0 ? (
+              {isWeeklyCandidateChild ? (
+                <span className={`task-status status-${task.status}`}>{weeklyCandidateStatusLabel(task.status)}</span>
+              ) : progress.total > 0 ? (
                 <span className="task-progress">
                   子任务 {progress.closed} / {progress.total}
                 </span>
@@ -326,13 +409,15 @@ export function ProjectDetail({
                   开始
                 </button>
               ) : null}
-              {task.status !== "not_started" && task.status !== "completed" ? (
+              {!isWeeklyCandidateChild && task.status !== "not_started" && task.status !== "completed" ? (
                 <span className={`task-status status-${task.status}`}>{taskStatusLabels[task.status]}</span>
               ) : null}
             </div>
           </div>
 
-          {canAddChild ? (
+          {isWeeklyCandidateChild ? renderWeeklyCandidateActions(task) : null}
+
+          {canAddChild && !hideTaskAddForm ? (
             <form className="task-add-form" onSubmit={(event) => handleAddTaskChild(event, task.id)}>
               <label>
                 <span>添加到{task.title}</span>
@@ -350,11 +435,31 @@ export function ProjectDetail({
           ) : null}
         </article>
 
-        {task.children.length > 0 ? (
+        {isWeeklyProject && weeklyPickTask && weeklyPickTask.id === task.id ? (
+          <div className="object-list">
+            <p className="metric-label">已入选 {weeklySelectedCandidates.length}</p>
+            {weeklySelectedCandidates.length > 0 ? (
+              weeklySelectedCandidates.map((candidate) => (
+                <div className="object-row" key={candidate.id}>
+                  <div className="object-main">
+                    <span className="object-title">{candidate.title}</span>
+                    <span className="object-state">入选</span>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <p className="empty-state">暂无入选仓库</p>
+            )}
+          </div>
+        ) : task.children.length > 0 ? (
           <ol className="task-tree nested">{task.children.map((child) => renderTaskNode(child, depth + 1))}</ol>
         ) : null}
       </li>
     );
+  }
+
+  function isWeeklyCandidateChildLike(task: TaskNode) {
+    return Boolean(isWeeklyProject && weeklyHandsOnTask && weeklyHandsOnTask.children.some((candidate) => candidate.id === task.id));
   }
 
   return (
@@ -436,24 +541,26 @@ export function ProjectDetail({
         <section className="detail-section" aria-labelledby="task-tree-title">
           <h3 id="task-tree-title">任务拆解</h3>
 
-          <form className="task-add-form root-task-form" onSubmit={(event) => handleAddTaskChild(event, rootTask.id)}>
-            <label>
-              <span>添加到{project.title}</span>
-              <input
-                disabled={isReadOnly}
-                value={taskTitles[rootTask.id] ?? ""}
-                onChange={(event) => setTaskTitles((current) => ({ ...current, [rootTask.id]: event.target.value }))}
-                placeholder="写下一个小任务"
-              />
-            </label>
-            <button
-              className="primary-action compact"
-              type="submit"
-              disabled={isReadOnly || !taskTitles[rootTask.id]?.trim()}
-            >
-              添加小任务
-            </button>
-          </form>
+          {!isWeeklyProject ? (
+            <form className="task-add-form root-task-form" onSubmit={(event) => handleAddTaskChild(event, rootTask.id)}>
+              <label>
+                <span>添加到{project.title}</span>
+                <input
+                  disabled={isReadOnly}
+                  value={taskTitles[rootTask.id] ?? ""}
+                  onChange={(event) => setTaskTitles((current) => ({ ...current, [rootTask.id]: event.target.value }))}
+                  placeholder="写下一个小任务"
+                />
+              </label>
+              <button
+                className="primary-action compact"
+                type="submit"
+                disabled={isReadOnly || !taskTitles[rootTask.id]?.trim()}
+              >
+                添加小任务
+              </button>
+            </form>
+          ) : null}
 
           {rootTask.children.length > 0 ? (
             <ol className="task-tree">{rootTask.children.map((task) => renderTaskNode(task, 2))}</ol>
