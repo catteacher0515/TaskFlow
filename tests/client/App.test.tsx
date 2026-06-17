@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/react";
+import { within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "../../src/client/App";
@@ -119,8 +120,7 @@ const appState: AppState = {
   ],
   warnings: [],
   focusMode: {
-    status: "active",
-    selectedProjectId: "project-1"
+    status: "inactive"
   }
 };
 
@@ -350,6 +350,282 @@ describe("App", () => {
     expect(screen.getByText("5 分钟启动块")).toBeInTheDocument();
   });
 
+  it("shows a blocking gate for unresolved parallel limit and lets the user select one active project", async () => {
+    const user = userEvent.setup();
+    const warningState = {
+      ...appState,
+      projects: [
+        {
+          ...appState.projects[0],
+          status: "active" as const
+        },
+        {
+          ...appState.projects[1],
+          id: "project-2",
+          title: "整理播客选题",
+          status: "active" as const,
+          templateId: "generic-task",
+          templateSnapshot: {
+            templateId: "generic-task",
+            templateName: "通用任务",
+            stages: [],
+            slots: [],
+            minimumActions: genericTemplate.minimumActions,
+            warningRules: genericTemplate.warningRules
+          },
+          stages: [],
+          progressObjects: [],
+          slots: [],
+          taskTree: {
+            id: "project-2-root",
+            title: "整理播客选题",
+            status: "not_started" as const,
+            children: [],
+            createdAt: "2026-06-16T08:00:00.000Z",
+            updatedAt: "2026-06-16T08:00:00.000Z"
+          }
+        }
+      ],
+      settings: {
+        ...appState.settings,
+        activeProjectLimit: 1
+      },
+      warnings: [
+        {
+          id: "warning-1",
+          type: "parallel_limit" as const,
+          message: "进行中项目 2 / 1，超过并行上限。",
+          severity: "blocking" as const,
+          createdAt: "2026-06-16T08:10:00.000Z"
+        }
+      ],
+      focusMode: {
+        status: "inactive" as const
+      }
+    };
+    const focusedState = {
+      ...warningState,
+      focusMode: {
+        status: "active" as const,
+        selectedProjectId: "project-2",
+        selectedActionId: "start-five-minutes",
+        session: {
+          startedAt: "2026-06-16T08:11:00.000Z",
+          durationMinutes: 5 as const
+        }
+      }
+    };
+
+    globalThis.fetch = vi.fn(async (input, init) => {
+      const path = String(input);
+      if (path === "/api/state") {
+        return jsonResponse(warningState);
+      }
+      if (path === "/api/focus/select") {
+        expect(init).toMatchObject({
+          method: "POST",
+          body: JSON.stringify({
+            projectId: "project-2",
+            selectedActionId: "start-five-minutes"
+          })
+        });
+        return jsonResponse(focusedState);
+      }
+      return jsonResponse(warningState);
+    });
+
+    render(<App />);
+
+    const gateTitle = await screen.findByRole("heading", { name: "进行中项目超出上限，先只选一个继续" });
+    const gate = gateTitle.closest(".parallel-limit-gate-panel");
+    expect(gate).not.toBeNull();
+    expect(within(gate as HTMLElement).getByText("每周 GitHub 精选 2026-W25")).toBeInTheDocument();
+    expect(within(gate as HTMLElement).getByText("整理播客选题")).toBeInTheDocument();
+    expect(screen.queryByText("暂停的项目")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "选这个项目：先推进 5 分钟" }));
+
+    expect(await screen.findByText("收束模式")).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "进行中项目超出上限，先只选一个继续" })).not.toBeInTheDocument();
+  });
+
+  it("switches the detail panel to the selected focus project and disables new task navigation during focus mode", async () => {
+    const user = userEvent.setup();
+    const focusableProject = {
+      ...appState.projects[1],
+      id: "project-2",
+      title: "整理播客选题",
+      status: "active" as const,
+      templateId: "generic-task",
+      templateSnapshot: {
+        templateId: "generic-task",
+        templateName: "通用任务",
+        stages: [],
+        slots: [],
+        minimumActions: genericTemplate.minimumActions,
+        warningRules: genericTemplate.warningRules
+      },
+      stages: [],
+      progressObjects: [],
+      slots: [],
+      taskTree: {
+        id: "project-2-root",
+        title: "整理播客选题",
+        status: "not_started" as const,
+        children: [],
+        createdAt: "2026-06-16T08:00:00.000Z",
+        updatedAt: "2026-06-16T08:00:00.000Z"
+      }
+    };
+    const warningState = {
+      ...appState,
+      projects: [{ ...appState.projects[0], status: "active" as const }, focusableProject],
+      settings: {
+        ...appState.settings,
+        activeProjectLimit: 1
+      },
+      warnings: [
+        {
+          id: "warning-1",
+          type: "parallel_limit" as const,
+          message: "进行中项目 2 / 1，超过并行上限。",
+          severity: "blocking" as const,
+          createdAt: "2026-06-16T08:10:00.000Z"
+        }
+      ],
+      focusMode: {
+        status: "inactive" as const
+      }
+    };
+    const focusedState = {
+      ...warningState,
+      focusMode: {
+        status: "active" as const,
+        selectedProjectId: "project-2",
+        selectedActionId: "start-five-minutes",
+        session: {
+          startedAt: "2026-06-16T08:11:00.000Z",
+          durationMinutes: 5 as const
+        }
+      }
+    };
+
+    globalThis.fetch = vi.fn(async (input, init) => {
+      const path = String(input);
+      if (path === "/api/state") {
+        return jsonResponse(warningState);
+      }
+      if (path === "/api/focus/select") {
+        expect(init).toMatchObject({
+          method: "POST",
+          body: JSON.stringify({
+            projectId: "project-2",
+            selectedActionId: "start-five-minutes"
+          })
+        });
+        return jsonResponse(focusedState);
+      }
+      return jsonResponse(focusedState);
+    });
+
+    render(<App />);
+
+    await user.click(await screen.findByRole("button", { name: "选这个项目：先推进 5 分钟" }));
+
+    expect(await screen.findByRole("heading", { name: "整理播客选题" })).toBeInTheDocument();
+    expect(screen.getByText("当前只推进：整理播客选题")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "新建任务" })).toBeDisabled();
+  });
+
+  it("keeps other projects visible but read-only during focus mode and allows ending focus mode", async () => {
+    const user = userEvent.setup();
+    const focusedProject = {
+      ...appState.projects[0],
+      status: "active" as const
+    };
+    const readOnlyProject = {
+      ...appState.projects[1],
+      id: "project-2",
+      title: "整理播客选题",
+      status: "active" as const,
+      templateId: "generic-task",
+      templateSnapshot: {
+        templateId: "generic-task",
+        templateName: "通用任务",
+        stages: [],
+        slots: [],
+        minimumActions: genericTemplate.minimumActions,
+        warningRules: genericTemplate.warningRules
+      },
+      stages: [],
+      progressObjects: [],
+      slots: [],
+      taskTree: {
+        id: "project-2-root",
+        title: "整理播客选题",
+        status: "not_started" as const,
+        children: [],
+        createdAt: "2026-06-16T08:00:00.000Z",
+        updatedAt: "2026-06-16T08:00:00.000Z"
+      }
+    };
+    const focusedState = {
+      ...appState,
+      projects: [focusedProject, readOnlyProject],
+      focusMode: {
+        status: "active" as const,
+        selectedProjectId: "project-1",
+        selectedActionId: "test-one-repo",
+        session: {
+          startedAt: "2026-06-16T08:11:00.000Z",
+          durationMinutes: 5 as const
+        }
+      }
+    };
+    const exitedState = {
+      ...focusedState,
+      focusMode: {
+        status: "inactive" as const
+      }
+    };
+
+    globalThis.fetch = vi.fn(async (input, init) => {
+      const path = String(input);
+      if (path === "/api/state") {
+        return jsonResponse(focusedState);
+      }
+      if (path === "/api/focus/exit") {
+        expect(init).toMatchObject({
+          method: "POST",
+          body: JSON.stringify({})
+        });
+        return jsonResponse(exitedState);
+      }
+      return jsonResponse(focusedState);
+    });
+
+    render(<App />);
+
+    await user.click(await screen.findByRole("button", { name: /整理播客选题/ }));
+
+    expect(screen.getByRole("heading", { name: "整理播客选题" })).toBeInTheDocument();
+    expect(screen.getByText("收束模式下该项目只读")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "暂停项目" })).toBeDisabled();
+    expect(screen.getByLabelText("添加到整理播客选题")).toBeDisabled();
+
+    await user.click(screen.getByRole("button", { name: "结束收束" }));
+
+    expect(fetch).toHaveBeenCalledWith(
+      "/api/focus/exit",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({})
+      })
+    );
+    expect(await screen.findByRole("button", { name: "新建任务" })).not.toBeDisabled();
+    expect(screen.queryByText("收束模式")).not.toBeInTheDocument();
+  });
+
   it("navigates to a generic new task page and creates a project", async () => {
     const user = userEvent.setup();
     const nextProject = {
@@ -450,6 +726,121 @@ describe("App", () => {
       })
     );
     expect(await screen.findByRole("button", { name: "暂停项目" })).toBeInTheDocument();
+  });
+
+  it("marks a project as abandoned and restores it from the abandoned group", async () => {
+    const user = userEvent.setup();
+    const abandonedProject = {
+      ...appState.projects[0],
+      status: "abandoned" as never,
+      completedFromStatus: "active" as const
+    };
+    const abandonedState = replaceProject(abandonedProject as Project);
+    const restoredState = replaceProject({
+      ...appState.projects[0],
+      status: "active" as const,
+      completedFromStatus: undefined
+    });
+
+    globalThis.fetch = vi.fn(async (input, init) => {
+      const path = String(input);
+      if (path === "/api/state") {
+        return jsonResponse(appState);
+      }
+      if (path === "/api/projects/project-1/status") {
+        const body = JSON.parse(String(init?.body ?? "{}"));
+        return jsonResponse(body.status === "abandoned" ? abandonedState : restoredState);
+      }
+      if (path === "/api/projects/project-1/reopen") {
+        return jsonResponse(restoredState);
+      }
+      return jsonResponse(appState);
+    });
+
+    render(<App />);
+
+    await user.click(await screen.findByRole("button", { name: "放弃项目" }));
+
+    expect(fetch).toHaveBeenCalledWith(
+      "/api/projects/project-1/status",
+      expect.objectContaining({
+        method: "PATCH",
+        body: JSON.stringify({ status: "abandoned" })
+      })
+    );
+    expect(await screen.findByRole("button", { name: "恢复为进行中" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "已放弃 1" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "恢复为进行中" }));
+
+    expect(fetch).toHaveBeenCalledWith(
+      "/api/projects/project-1/reopen",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({})
+      })
+    );
+    expect(await screen.findByRole("button", { name: "暂停项目" })).toBeInTheDocument();
+  });
+
+  it("does not hide a project when the user cancels the confirmation", async () => {
+    const user = userEvent.setup();
+    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(false);
+
+    globalThis.fetch = vi.fn(async (input) => {
+      const path = String(input);
+      if (path === "/api/state") {
+        return jsonResponse(appState);
+      }
+      return jsonResponse(appState);
+    });
+
+    render(<App />);
+
+    await user.click(await screen.findByRole("button", { name: "隐藏项目" }));
+
+    expect(confirmSpy).toHaveBeenCalledWith("确定要隐藏这个项目吗？隐藏后它会从界面中移除，但底层历史数据会保留。");
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(screen.getAllByText("每周 GitHub 精选 2026-W25").length).toBeGreaterThan(0);
+  });
+
+  it("hides a project from the visible list after confirmation without deleting its underlying data", async () => {
+    const user = userEvent.setup();
+    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
+    const hiddenProject = {
+      ...appState.projects[0],
+      hiddenAt: "2026-06-16T08:30:00.000Z"
+    };
+    const nextState = {
+      ...appState,
+      projects: [hiddenProject, appState.projects[1]]
+    };
+
+    globalThis.fetch = vi.fn(async (input) => {
+      const path = String(input);
+      if (path === "/api/state") {
+        return jsonResponse(appState);
+      }
+      if (path === "/api/projects/project-1/hide") {
+        return jsonResponse(nextState);
+      }
+      return jsonResponse(appState);
+    });
+
+    render(<App />);
+
+    await user.click(await screen.findByRole("button", { name: "隐藏项目" }));
+
+    expect(confirmSpy).toHaveBeenCalledWith("确定要隐藏这个项目吗？隐藏后它会从界面中移除，但底层历史数据会保留。");
+    expect(fetch).toHaveBeenCalledWith(
+      "/api/projects/project-1/hide",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({})
+      })
+    );
+    expect(await screen.findByRole("heading", { name: "暂停的项目" })).toBeInTheDocument();
+    expect(screen.queryAllByText("每周 GitHub 精选 2026-W25")).toHaveLength(0);
   });
 
   it("adds and completes generic task children from the detail panel with a checkbox", async () => {

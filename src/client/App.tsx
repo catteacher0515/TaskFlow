@@ -3,9 +3,12 @@ import {
   addTaskChildApi,
   createProgressObject,
   createProjectApi,
+  exitFocusModeApi,
   fillSlotApi,
   fetchState,
+  hideProjectApi,
   reopenProjectApi,
+  selectFocusProjectApi,
   transitionProgressObjectApi,
   updateTaskStatusApi,
   updateProjectStatusApi
@@ -14,11 +17,13 @@ import { CurrentPanel } from "./components/CurrentPanel";
 import { FeedbackPage } from "./components/FeedbackPage";
 import { FocusModePanel } from "./components/FocusModePanel";
 import { NewProjectPanel } from "./components/NewProjectPanel";
+import { ParallelLimitGate } from "./components/ParallelLimitGate";
 import { ProjectDetail } from "./components/ProjectDetail";
 import { ProjectList } from "./components/ProjectList";
 import { TemplateManager } from "./components/TemplateManager";
 import "./styles.css";
 import type { AppState, ProjectStatus, TaskNodeStatus } from "../shared/types";
+import { hasParallelLimitGate } from "../shared/parallelLimitGate";
 
 type AppView = "workbench" | "new" | "templates" | "feedback";
 
@@ -45,7 +50,7 @@ export function App() {
         }
 
         setState(nextState);
-        setSelectedProjectId((currentId) => currentId ?? nextState.projects[0]?.id);
+        setSelectedProjectId((currentId) => resolveSelectedProjectId(nextState, currentId));
       })
       .catch((caught: unknown) => {
         if (!isCurrent) {
@@ -60,26 +65,39 @@ export function App() {
     };
   }, []);
 
+  const visibleProjects = useMemo(
+    () => state?.projects.filter((project) => !project.hiddenAt) ?? [],
+    [state]
+  );
   const selectedProject = useMemo(() => {
-    if (!state || !selectedProjectId) {
+    if (!selectedProjectId) {
       return undefined;
     }
 
-    return state.projects.find((project) => project.id === selectedProjectId);
-  }, [selectedProjectId, state]);
+    return visibleProjects.find((project) => project.id === selectedProjectId);
+  }, [selectedProjectId, visibleProjects]);
+  const showParallelLimitGate = state ? hasParallelLimitGate(state.warnings, state.focusMode) : false;
+  const activeProjects = visibleProjects.filter((project) => project.status === "active");
+  const focusSelectedProjectId = state?.focusMode.status === "active" ? state.focusMode.selectedProjectId : undefined;
+  const isFocusModeActive = state?.focusMode.status === "active";
+  const isSelectedProjectReadOnly = Boolean(
+    isFocusModeActive && selectedProject && selectedProject.id !== focusSelectedProjectId
+  );
 
-  async function runMutation(mutation: () => Promise<AppState>) {
+  async function runMutation(
+    mutation: () => Promise<AppState>,
+    options?: { preferredProjectId?: string; nextView?: AppView }
+  ) {
     setError(null);
 
     try {
       const nextState = await mutation();
       setState(nextState);
+      if (options?.nextView) {
+        setView(options.nextView);
+      }
       setSelectedProjectId((currentId) => {
-        if (currentId && nextState.projects.some((project) => project.id === currentId)) {
-          return currentId;
-        }
-
-        return nextState.projects[0]?.id;
+        return resolveSelectedProjectId(nextState, currentId, options?.preferredProjectId);
       });
     } catch (caught: unknown) {
       setError(caught instanceof Error ? caught.message : "操作失败");
@@ -92,6 +110,14 @@ export function App() {
 
   function handleReopenProject(projectId: string) {
     return runMutation(() => reopenProjectApi(projectId));
+  }
+
+  function handleHideProject(projectId: string) {
+    return runMutation(() => hideProjectApi(projectId));
+  }
+
+  function handleExitFocusMode() {
+    return runMutation(() => exitFocusModeApi());
   }
 
   async function handleCreateProject(input: Parameters<typeof createProjectApi>[0]) {
@@ -132,6 +158,17 @@ export function App() {
     return runMutation(() => updateTaskStatusApi(projectId, taskId, status));
   }
 
+  function handleSelectFocusProject(input: {
+    projectId: string;
+    selectedActionId?: string;
+    customActionLabel?: string;
+  }) {
+    return runMutation(() => selectFocusProjectApi(input), {
+      preferredProjectId: input.projectId,
+      nextView: "workbench"
+    });
+  }
+
   return (
     <main className="app-shell">
       <header className="app-header">
@@ -145,6 +182,7 @@ export function App() {
               className={view === item.id ? "active" : ""}
               key={item.id}
               type="button"
+              disabled={item.id === "new" && isFocusModeActive}
               aria-pressed={view === item.id}
               onClick={() => setView(item.id)}
             >
@@ -160,7 +198,11 @@ export function App() {
         </section>
       ) : null}
 
-      {state ? <FocusModePanel state={state} /> : null}
+      {state && showParallelLimitGate ? (
+        <ParallelLimitGate projects={activeProjects} onSelect={handleSelectFocusProject} />
+      ) : null}
+
+      {state ? <FocusModePanel state={state} onExit={handleExitFocusMode} /> : null}
 
       {!state && !error ? (
         <section className="panel loading">加载中...</section>
@@ -171,7 +213,7 @@ export function App() {
           <aside className="left-column">
             <CurrentPanel state={state} onViewFeedback={() => setView("feedback")} />
             <ProjectList
-              projects={state.projects}
+              projects={visibleProjects}
               selectedProjectId={selectedProject?.id}
               onSelectProject={setSelectedProjectId}
             />
@@ -185,8 +227,11 @@ export function App() {
             onTransitionProgressObject={handleTransitionProgressObject}
             onUpdateProjectStatus={handleUpdateProjectStatus}
             onReopenProject={handleReopenProject}
+            onHideProject={handleHideProject}
             onAddTaskChild={handleAddTaskChild}
             onUpdateTaskStatus={handleUpdateTaskStatus}
+            isReadOnly={isSelectedProjectReadOnly}
+            readOnlyMessage={isSelectedProjectReadOnly ? "收束模式下该项目只读" : undefined}
           />
         </div>
       ) : null}
@@ -216,4 +261,31 @@ export function App() {
       ) : null}
     </main>
   );
+}
+
+function resolveSelectedProjectId(
+  nextState: AppState,
+  currentId?: string,
+  preferredProjectId?: string
+): string | undefined {
+  const visibleProjects = nextState.projects.filter((project) => !project.hiddenAt);
+  const visibleProjectIds = new Set(visibleProjects.map((project) => project.id));
+
+  if (preferredProjectId && visibleProjectIds.has(preferredProjectId)) {
+    return preferredProjectId;
+  }
+
+  if (currentId && visibleProjectIds.has(currentId)) {
+    return currentId;
+  }
+
+  if (
+    nextState.focusMode.status === "active" &&
+    nextState.focusMode.selectedProjectId &&
+    visibleProjectIds.has(nextState.focusMode.selectedProjectId)
+  ) {
+    return nextState.focusMode.selectedProjectId;
+  }
+
+  return visibleProjects[0]?.id;
 }

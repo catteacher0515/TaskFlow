@@ -303,6 +303,91 @@ describe("Express API routes", () => {
     expect(completedResponse.body.focusMode.session.result).toBe("recorded");
   });
 
+  it("exits focus mode on request", async () => {
+    const { app } = await makeFixture();
+    await request(app)
+      .post("/api/projects")
+      .send({ templateId: "weekly-github-picks", title: "Project 1", recurrence: { kind: "weekly" } })
+      .expect(201);
+    await request(app)
+      .post("/api/projects")
+      .send({ templateId: "weekly-github-picks", title: "Project 2", recurrence: { kind: "weekly" } })
+      .expect(201);
+    await request(app).patch("/api/projects/project-1/status").send({ status: "active" }).expect(200);
+    await request(app).patch("/api/projects/project-2/status").send({ status: "active" }).expect(200);
+    await request(app)
+      .post("/api/focus/select")
+      .send({ projectId: "project-1", selectedActionId: "test-one-repo" })
+      .expect(200);
+
+    const response = await request(app)
+      .post("/api/focus/exit")
+      .send({})
+      .expect(200);
+
+    expect(response.body.focusMode).toEqual({ status: "inactive" });
+  });
+
+  it("blocks creating a new project until one active project is selected after parallel limit is exceeded", async () => {
+    const { app } = await makeFixture(["project-1", "project-2", "project-3"]);
+    await request(app)
+      .post("/api/projects")
+      .send({ templateId: "weekly-github-picks", title: "Project 1", recurrence: { kind: "weekly" } })
+      .expect(201);
+    await request(app)
+      .post("/api/projects")
+      .send({ templateId: "weekly-github-picks", title: "Project 2", recurrence: { kind: "weekly" } })
+      .expect(201);
+    await request(app)
+      .post("/api/projects")
+      .send({ templateId: "weekly-github-picks", title: "Project 3", recurrence: { kind: "weekly" } })
+      .expect(201);
+    await request(app).patch("/api/projects/project-1/status").send({ status: "active" }).expect(200);
+    await request(app).patch("/api/projects/project-2/status").send({ status: "active" }).expect(200);
+
+    const blockedResponse = await request(app)
+      .post("/api/projects")
+      .send({ templateId: "generic-task", title: "Blocked project", recurrence: { kind: "none" } })
+      .expect(409);
+
+    expect(blockedResponse.body.error).toBe("Parallel limit requires selecting one focus project first");
+  });
+
+  it("blocks project mutations until one active project is selected after parallel limit is exceeded", async () => {
+    const { app } = await makeFixture(["project-1", "project-2", "project-3", "progress-object-1"]);
+    await request(app)
+      .post("/api/projects")
+      .send({ templateId: "weekly-github-picks", title: "Project 1", recurrence: { kind: "weekly" } })
+      .expect(201);
+    await request(app)
+      .post("/api/projects")
+      .send({ templateId: "weekly-github-picks", title: "Project 2", recurrence: { kind: "weekly" } })
+      .expect(201);
+    await request(app)
+      .post("/api/projects")
+      .send({ templateId: "weekly-github-picks", title: "Project 3", recurrence: { kind: "weekly" } })
+      .expect(201);
+    await request(app).patch("/api/projects/project-1/status").send({ status: "active" }).expect(200);
+    await request(app).patch("/api/projects/project-2/status").send({ status: "active" }).expect(200);
+
+    const blockedResponse = await request(app)
+      .post("/api/projects/project-1/progress-objects")
+      .send({ title: "blocked repo", fields: {} })
+      .expect(409);
+
+    expect(blockedResponse.body.error).toBe("Parallel limit requires selecting one focus project first");
+
+    await request(app)
+      .post("/api/focus/select")
+      .send({ projectId: "project-1", selectedActionId: "test-one-repo" })
+      .expect(200);
+
+    await request(app)
+      .post("/api/projects/project-1/progress-objects")
+      .send({ title: "allowed repo", fields: {} })
+      .expect(200);
+  });
+
   it("rejects invalid project status without persisting it", async () => {
     const { app } = await makeFixture();
     await request(app)
@@ -345,6 +430,86 @@ describe("Express API routes", () => {
 
     expect(reopenedResponse.body.projects[0].status).toBe("active");
     expect(reopenedResponse.body.projects[0].completedFromStatus).toBeUndefined();
+  });
+
+  it("reopens an abandoned project to the status it had before abandonment", async () => {
+    const { app } = await makeFixture();
+    await request(app)
+      .post("/api/projects")
+      .send({ templateId: "weekly-github-picks", title: "Project 1", recurrence: { kind: "weekly" } })
+      .expect(201);
+    await request(app).patch("/api/projects/project-1/status").send({ status: "active" }).expect(200);
+
+    const abandonedResponse = await request(app)
+      .patch("/api/projects/project-1/status")
+      .send({ status: "abandoned" })
+      .expect(200);
+    expect(abandonedResponse.body.projects[0]).toMatchObject({
+      status: "abandoned",
+      completedFromStatus: "active"
+    });
+
+    const reopenedResponse = await request(app)
+      .post("/api/projects/project-1/reopen")
+      .send({})
+      .expect(200);
+
+    expect(reopenedResponse.body.projects[0].status).toBe("active");
+    expect(reopenedResponse.body.projects[0].completedFromStatus).toBeUndefined();
+  });
+
+  it("auto exits focus mode when the selected project is completed", async () => {
+    const { app } = await makeFixture();
+    await request(app)
+      .post("/api/projects")
+      .send({ templateId: "weekly-github-picks", title: "Project 1", recurrence: { kind: "weekly" } })
+      .expect(201);
+    await request(app)
+      .post("/api/projects")
+      .send({ templateId: "weekly-github-picks", title: "Project 2", recurrence: { kind: "weekly" } })
+      .expect(201);
+    await request(app).patch("/api/projects/project-1/status").send({ status: "active" }).expect(200);
+    await request(app).patch("/api/projects/project-2/status").send({ status: "active" }).expect(200);
+    await request(app)
+      .post("/api/focus/select")
+      .send({ projectId: "project-1", selectedActionId: "test-one-repo" })
+      .expect(200);
+
+    const response = await request(app)
+      .patch("/api/projects/project-1/status")
+      .send({ status: "completed" })
+      .expect(200);
+
+    expect(response.body.projects[0].status).toBe("completed");
+    expect(response.body.focusMode).toEqual({ status: "inactive" });
+  });
+
+  it("hides a project without deleting it and auto exits focus mode when the selected project is hidden", async () => {
+    const { app } = await makeFixture();
+    await request(app)
+      .post("/api/projects")
+      .send({ templateId: "weekly-github-picks", title: "Project 1", recurrence: { kind: "weekly" } })
+      .expect(201);
+    await request(app)
+      .post("/api/projects")
+      .send({ templateId: "weekly-github-picks", title: "Project 2", recurrence: { kind: "weekly" } })
+      .expect(201);
+    await request(app).patch("/api/projects/project-1/status").send({ status: "active" }).expect(200);
+    await request(app).patch("/api/projects/project-2/status").send({ status: "active" }).expect(200);
+    await request(app)
+      .post("/api/focus/select")
+      .send({ projectId: "project-1", selectedActionId: "test-one-repo" })
+      .expect(200);
+
+    const response = await request(app)
+      .post("/api/projects/project-1/hide")
+      .send({})
+      .expect(200);
+
+    expect(response.body.projects.find((project: { id: string }) => project.id === "project-1")).toMatchObject({
+      hiddenAt: expect.any(String)
+    });
+    expect(response.body.focusMode).toEqual({ status: "inactive" });
   });
 
   it("maps unknown progress object mutations to not found", async () => {

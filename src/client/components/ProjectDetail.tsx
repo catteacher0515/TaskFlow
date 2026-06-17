@@ -9,8 +9,11 @@ interface ProjectDetailProps {
   onTransitionProgressObject?: (projectId: string, progressObjectId: string, nextStateId: string) => Promise<void>;
   onUpdateProjectStatus?: (projectId: string, status: ProjectStatus) => Promise<void>;
   onReopenProject?: (projectId: string) => Promise<void>;
+  onHideProject?: (projectId: string) => Promise<void>;
   onAddTaskChild?: (projectId: string, taskId: string, title: string) => Promise<void>;
   onUpdateTaskStatus?: (projectId: string, taskId: string, status: TaskNodeStatus) => Promise<void>;
+  isReadOnly?: boolean;
+  readOnlyMessage?: string;
 }
 
 interface TaskContextMenuState {
@@ -19,7 +22,7 @@ interface TaskContextMenuState {
   y: number;
 }
 
-const projectStatusLabels: Record<Exclude<ProjectStatus, "completed">, string> = {
+const projectStatusLabels: Record<Extract<ProjectStatus, "not_started" | "active" | "paused">, string> = {
   not_started: "待开始",
   active: "进行中",
   paused: "暂停"
@@ -83,7 +86,7 @@ function nextStatusAction(status: ProjectStatus) {
   return undefined;
 }
 
-function reopenProjectLabel(status?: Exclude<ProjectStatus, "completed">) {
+function reopenProjectLabel(status?: Extract<ProjectStatus, "not_started" | "active" | "paused">) {
   if (!status) {
     return "恢复项目";
   }
@@ -136,8 +139,11 @@ export function ProjectDetail({
   onTransitionProgressObject,
   onUpdateProjectStatus,
   onReopenProject,
+  onHideProject,
   onAddTaskChild,
-  onUpdateTaskStatus
+  onUpdateTaskStatus,
+  isReadOnly = false,
+  readOnlyMessage
 }: ProjectDetailProps) {
   const [progressObjectTitle, setProgressObjectTitle] = useState("");
   const [progressObjectUrl, setProgressObjectUrl] = useState("");
@@ -202,7 +208,7 @@ export function ProjectDetail({
     event.preventDefault();
 
     const title = progressObjectTitle.trim();
-    if (!title || !onCreateProgressObject) {
+    if (!title || !onCreateProgressObject || isReadOnly) {
       return;
     }
 
@@ -216,7 +222,7 @@ export function ProjectDetail({
 
   async function handleFillSlot(slotId: string) {
     const progressObjectId = slotSelections[slotId];
-    if (!progressObjectId || !onFillSlot) {
+    if (!progressObjectId || !onFillSlot || isReadOnly) {
       return;
     }
 
@@ -232,7 +238,7 @@ export function ProjectDetail({
     event.preventDefault();
 
     const title = taskTitles[taskId]?.trim();
-    if (!title || !onAddTaskChild) {
+    if (!title || !onAddTaskChild || isReadOnly) {
       return;
     }
 
@@ -241,7 +247,7 @@ export function ProjectDetail({
   }
 
   async function handleTaskStatus(task: TaskNode, status: TaskNodeStatus, options?: { playSound?: boolean }) {
-    if (!onUpdateTaskStatus) {
+    if (!onUpdateTaskStatus || isReadOnly) {
       return;
     }
 
@@ -276,26 +282,30 @@ export function ProjectDetail({
     const progress = countTaskChildren(task);
     const isClosed = closedTaskStatuses.has(task.status);
     const isChecked = task.status === "completed";
-    const canAddChild = depth < 3 && !isClosed && Boolean(onAddTaskChild);
-    const canStart = task.status === "not_started" && Boolean(onUpdateTaskStatus);
-    const canToggleCheckbox = Boolean(onUpdateTaskStatus) && task.status !== "dropped" && task.status !== "unhandled";
+    const canAddChild = depth < 3 && !isClosed && Boolean(onAddTaskChild) && !isReadOnly;
+    const canStart = task.status === "not_started" && Boolean(onUpdateTaskStatus) && !isReadOnly;
+    const canToggleCheckbox =
+      Boolean(onUpdateTaskStatus) && task.status !== "dropped" && task.status !== "unhandled" && !isReadOnly;
 
     return (
       <li className={`task-node depth-${depth}`} key={task.id}>
         <article
           className={`task-card todo-card${isChecked ? " completed" : ""}${task.status === "dropped" ? " dropped" : ""}`}
           onContextMenu={(event) => {
+            if (isReadOnly) {
+              return;
+            }
             event.preventDefault();
             setTaskContextMenu({ taskId: task.id, x: event.clientX, y: event.clientY });
           }}
         >
           <div className="todo-line">
             <label className={`todo-check${isChecked ? " checked" : ""}${!canToggleCheckbox ? " disabled" : ""}`}>
-              <input
-                aria-label={task.title}
-                checked={isChecked}
-                disabled={!canToggleCheckbox}
-                type="checkbox"
+                <input
+                  aria-label={task.title}
+                  checked={isChecked}
+                  disabled={!canToggleCheckbox}
+                  type="checkbox"
                 onChange={(event) => void handleTaskCheckbox(task, event.target.checked)}
               />
               <span className="todo-title">{task.title}</span>
@@ -327,6 +337,7 @@ export function ProjectDetail({
               <label>
                 <span>添加到{task.title}</span>
                 <input
+                  disabled={isReadOnly}
                   value={taskTitles[task.id] ?? ""}
                   onChange={(event) => setTaskTitles((current) => ({ ...current, [task.id]: event.target.value }))}
                   placeholder="写下一个小任务"
@@ -359,8 +370,13 @@ export function ProjectDetail({
       </div>
 
       <div className="detail-actions" aria-label="项目操作">
-        {project.status === "completed" ? (
-          <button className="secondary-action" type="button" onClick={() => onReopenProject?.(projectId)}>
+        {project.status === "completed" || project.status === "abandoned" ? (
+          <button
+            className="secondary-action"
+            type="button"
+            disabled={isReadOnly}
+            onClick={() => onReopenProject?.(projectId)}
+          >
             {reopenProjectLabel(project.completedFromStatus)}
           </button>
         ) : (
@@ -369,6 +385,7 @@ export function ProjectDetail({
               <button
                 className="primary-action"
                 type="button"
+                disabled={isReadOnly}
                 onClick={() => onUpdateProjectStatus?.(projectId, statusAction.nextStatus)}
               >
                 {statusAction.label}
@@ -377,13 +394,43 @@ export function ProjectDetail({
             <button
               className="secondary-action"
               type="button"
+              disabled={isReadOnly}
               onClick={() => onUpdateProjectStatus?.(projectId, "completed")}
             >
               标记完成
             </button>
+            <button
+              className="secondary-action"
+              type="button"
+              disabled={isReadOnly}
+              onClick={() => onUpdateProjectStatus?.(projectId, "abandoned")}
+            >
+              放弃项目
+            </button>
           </>
         )}
+        <button
+          className="secondary-action"
+          type="button"
+          disabled={isReadOnly}
+          onClick={() => {
+            if (!onHideProject) {
+              return;
+            }
+
+            const shouldHide = window.confirm("确定要隐藏这个项目吗？隐藏后它会从界面中移除，但底层历史数据会保留。");
+            if (!shouldHide) {
+              return;
+            }
+
+            void onHideProject(projectId);
+          }}
+        >
+          隐藏项目
+        </button>
       </div>
+
+      {isReadOnly && readOnlyMessage ? <p className="readonly-banner">{readOnlyMessage}</p> : null}
 
       {rootTask ? (
         <section className="detail-section" aria-labelledby="task-tree-title">
@@ -393,12 +440,17 @@ export function ProjectDetail({
             <label>
               <span>添加到{project.title}</span>
               <input
+                disabled={isReadOnly}
                 value={taskTitles[rootTask.id] ?? ""}
                 onChange={(event) => setTaskTitles((current) => ({ ...current, [rootTask.id]: event.target.value }))}
                 placeholder="写下一个小任务"
               />
             </label>
-            <button className="primary-action compact" type="submit" disabled={!taskTitles[rootTask.id]?.trim()}>
+            <button
+              className="primary-action compact"
+              type="submit"
+              disabled={isReadOnly || !taskTitles[rootTask.id]?.trim()}
+            >
               添加小任务
             </button>
           </form>
@@ -452,6 +504,7 @@ export function ProjectDetail({
                 <label>
                   <span>{progressObjectName}名称</span>
                   <input
+                    disabled={isReadOnly}
                     value={progressObjectTitle}
                     onChange={(event) => setProgressObjectTitle(event.target.value)}
                     placeholder="owner/repo"
@@ -460,12 +513,13 @@ export function ProjectDetail({
                 <label>
                   <span>GitHub URL</span>
                   <input
+                    disabled={isReadOnly}
                     value={progressObjectUrl}
                     onChange={(event) => setProgressObjectUrl(event.target.value)}
                     placeholder="https://github.com/owner/repo"
                   />
                 </label>
-                <button className="primary-action" type="submit" disabled={!progressObjectTitle.trim()}>
+                <button className="primary-action" type="submit" disabled={isReadOnly || !progressObjectTitle.trim()}>
                   添加候选
                 </button>
               </form>
@@ -487,6 +541,7 @@ export function ProjectDetail({
                               className="secondary-action compact"
                               key={state.id}
                               type="button"
+                              disabled={isReadOnly}
                               onClick={() => onTransitionProgressObject(projectId, object.id, state.id)}
                             >
                               将 {object.title} 标记为{state.name}
@@ -515,6 +570,7 @@ export function ProjectDetail({
                         <label>
                           <span>选择填入{slot.name} 的候选</span>
                           <select
+                            disabled={isReadOnly}
                             value={slotSelections[slot.id] ?? ""}
                             onChange={(event) =>
                               setSlotSelections((current) => ({ ...current, [slot.id]: event.target.value }))
@@ -531,7 +587,7 @@ export function ProjectDetail({
                         <button
                           className="primary-action compact"
                           type="button"
-                          disabled={!slotSelections[slot.id]}
+                          disabled={isReadOnly || !slotSelections[slot.id]}
                           onClick={() => handleFillSlot(slot.id)}
                         >
                           填入{slot.name}

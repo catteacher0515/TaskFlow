@@ -148,3 +148,17 @@ export function completeFocusSessionApi(payload: { result: FocusSessionResult })
     body: JSON.stringify(payload)
   });
 }
+
+export function exitFocusModeApi(): Promise<AppState> {
+  return request<AppState>("/api/focus/exit", {
+    method: "POST",
+    body: JSON.stringify({})
+  });
+}
+
+export function hideProjectApi(projectId: string): Promise<AppState> {
+  return request<AppState>(`/api/projects/${projectId}/hide`, {
+    method: "POST",
+    body: JSON.stringify({})
+  });
+}

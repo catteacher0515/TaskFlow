@@ -6,7 +6,7 @@ interface CurrentPanelProps {
 }
 
 export function CurrentPanel({ state, onViewFeedback }: CurrentPanelProps) {
-  const activeCount = state.projects.filter((project) => project.status === "active").length;
+  const activeCount = state.projects.filter((project) => project.status === "active" && !project.hiddenAt).length;
   const activeLimit = state.settings.activeProjectLimit;
   const isOverLimit = activeCount > activeLimit;
   const focusLabel = state.focusMode.status === "active" ? "收束中" : "正常";

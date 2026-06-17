@@ -11,16 +11,18 @@ const statusLabels: Record<ProjectStatus, string> = {
   not_started: "待开始",
   active: "进行中",
   paused: "暂停",
-  completed: "已完成"
+  completed: "已完成",
+  abandoned: "已放弃"
 };
 
-const statusOrder: ProjectStatus[] = ["active", "not_started", "paused", "completed"];
+const statusOrder: ProjectStatus[] = ["active", "not_started", "paused", "completed", "abandoned"];
 
 const defaultExpanded: Record<ProjectStatus, boolean> = {
   active: true,
   not_started: true,
   paused: true,
-  completed: false
+  completed: false,
+  abandoned: false
 };
 
 export function ProjectList({ projects, selectedProjectId, onSelectProject }: ProjectListProps) {

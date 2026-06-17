@@ -204,6 +204,94 @@ h3 {
   background: #fff7f6;
 }
 
+.parallel-limit-gate {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.parallel-limit-gate-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(18, 24, 38, 0.38);
+  backdrop-filter: blur(2px);
+}
+
+.parallel-limit-gate-panel {
+  position: relative;
+  z-index: 1;
+  width: min(860px, calc(100vw - 48px));
+  max-height: calc(100vh - 48px);
+  overflow: auto;
+  border: 1px solid #d8d2c7;
+  border-radius: 8px;
+  padding: 20px;
+  background: #fffefa;
+  box-shadow: 0 24px 60px rgba(18, 24, 38, 0.18);
+}
+
+.parallel-limit-gate-panel h2 {
+  margin-bottom: 10px;
+  font-size: 24px;
+  line-height: 1.25;
+}
+
+.gate-copy {
+  margin-bottom: 18px;
+  color: #5d6672;
+  line-height: 1.5;
+}
+
+.gate-project-list {
+  display: grid;
+  gap: 12px;
+}
+
+.gate-project-card {
+  border: 1px solid #e4dfd5;
+  border-radius: 8px;
+  padding: 14px;
+  background: #faf8f2;
+}
+
+.gate-project-header {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.gate-project-header strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.gate-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.gate-custom-action {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: end;
+  margin-top: 12px;
+}
+
+.gate-custom-action label span {
+  display: block;
+  margin-bottom: 6px;
+  color: #66717f;
+  font-size: 12px;
+  font-weight: 750;
+}
+
 .focus-panel h2 {
   max-width: 760px;
   margin: 0;
@@ -1034,6 +1122,10 @@ h3 {
 
   .focus-panel {
     flex-direction: column;
+  }
+
+  .gate-custom-action {
+    grid-template-columns: 1fr;
   }
 
   .focus-action {

@@ -2,9 +2,10 @@ import type { AppState } from "../../shared/types";
 
 interface FocusModePanelProps {
   state: AppState;
+  onExit?: () => Promise<void>;
 }
 
-export function FocusModePanel({ state }: FocusModePanelProps) {
+export function FocusModePanel({ state, onExit }: FocusModePanelProps) {
   if (state.focusMode.status !== "active") {
     return null;
   }
@@ -25,6 +26,9 @@ export function FocusModePanel({ state }: FocusModePanelProps) {
         <strong>5 分钟启动块</strong>
         <span>{actionLabel}</span>
       </div>
+      <button className="secondary-action" type="button" onClick={() => void onExit?.()}>
+        结束收束
+      </button>
     </section>
   );
 }

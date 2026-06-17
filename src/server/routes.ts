@@ -6,9 +6,10 @@ import {
   transitionProgressObject
 } from "../shared/progress";
 import { addTaskChild, transitionTask } from "../shared/taskTree";
-import { canMutateProject, completeFocusSession, selectFocusProject } from "../shared/focusMode";
+import { canMutateProject, completeFocusSession, exitFocusMode, selectFocusProject } from "../shared/focusMode";
+import { hasParallelLimitGate } from "../shared/parallelLimitGate";
 import { createProjectFromTemplate } from "../shared/projectFactory";
-import { reopenProject, setProjectStatus } from "../shared/projectStatus";
+import { hideProject, reopenProject, setProjectStatus } from "../shared/projectStatus";
 import type {
   ActivityEntry,
   AppState,
@@ -28,7 +29,7 @@ import {
   writeTemplate
 } from "./storage";
 
-const projectStatuses: ProjectStatus[] = ["not_started", "active", "paused", "completed"];
+const projectStatuses: ProjectStatus[] = ["not_started", "active", "paused", "completed", "abandoned"];
 const focusSessionResults: FocusSessionResult[] = ["recorded", "continued", "blocked"];
 const taskNodeStatuses: TaskNodeStatus[] = ["not_started", "active", "completed", "dropped", "unhandled"];
 
@@ -45,6 +46,7 @@ export function registerRoutes(app: Express, deps: RouteDeps) {
 
   app.post("/api/projects", asyncRoute(async (req, res) => {
     const state = await readStateWithWarnings(deps);
+    assertParallelLimitResolved(state);
     const template = state.templates.find((item) => item.id === req.body.templateId);
 
     if (!template) {
@@ -86,6 +88,12 @@ export function registerRoutes(app: Express, deps: RouteDeps) {
 
   app.post("/api/projects/:projectId/reopen", asyncRoute(async (req, res) => {
     await mutateProject(deps, req.params.projectId, (project) => reopenProject(project, deps.now()));
+
+    res.json(await readStateWithWarnings(deps));
+  }));
+
+  app.post("/api/projects/:projectId/hide", asyncRoute(async (req, res) => {
+    await mutateProject(deps, req.params.projectId, (project) => hideProject(project, deps.now()));
 
     res.json(await readStateWithWarnings(deps));
   }));
@@ -233,6 +241,11 @@ export function registerRoutes(app: Express, deps: RouteDeps) {
     res.json(await readStateWithWarnings(deps));
   }));
 
+  app.post("/api/focus/exit", asyncRoute(async (_req, res) => {
+    await writeFocusMode(deps.rootDir, exitFocusMode());
+    res.json(await readStateWithWarnings(deps));
+  }));
+
   app.use(errorHandler);
 }
 
@@ -258,7 +271,12 @@ async function mutateProject(
   const state = await readStateWithWarnings(deps);
   const project = requireProject(state, projectId);
   assertCanMutate(state, projectId);
-  await writeProject(deps.rootDir, update(project));
+  const nextProject = update(project);
+  await writeProject(deps.rootDir, nextProject);
+
+  if (shouldExitFocusModeAfterProjectMutation(state, nextProject)) {
+    await writeFocusMode(deps.rootDir, exitFocusMode());
+  }
 }
 
 function requireProject(state: AppState, projectId: string): Project {
@@ -278,9 +296,25 @@ function findEffectiveTaskFeedback(activity: ActivityEntry[], taskId: string): A
 }
 
 function assertCanMutate(state: AppState, projectId: string) {
+  assertParallelLimitResolved(state);
+
   if (!canMutateProject(state.focusMode, projectId)) {
     throw new HttpError(409, `Focus mode only allows mutations on ${state.focusMode.selectedProjectId}`);
   }
+}
+
+function assertParallelLimitResolved(state: AppState) {
+  if (hasParallelLimitGate(state.warnings, state.focusMode)) {
+    throw new HttpError(409, "Parallel limit requires selecting one focus project first");
+  }
+}
+
+function shouldExitFocusModeAfterProjectMutation(state: AppState, project: Project): boolean {
+  if (state.focusMode.status !== "active" || state.focusMode.selectedProjectId !== project.id) {
+    return false;
+  }
+
+  return Boolean(project.hiddenAt) || project.status !== "active";
 }
 
 function parseProjectStatus(value: unknown): ProjectStatus {

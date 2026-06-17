@@ -9,7 +9,8 @@ interface EvaluateWarningsInput {
 
 export function evaluateWarnings(input: EvaluateWarningsInput): Warning[] {
   const { settings, projects, activity, now } = input;
-  const activeProjects = projects.filter((project) => project.status === "active");
+  const visibleProjects = projects.filter((project) => !project.hiddenAt);
+  const activeProjects = visibleProjects.filter((project) => project.status === "active");
   const warnings: Warning[] = [];
 
   if (activeProjects.length > settings.activeProjectLimit) {

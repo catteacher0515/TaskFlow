@@ -1,4 +1,4 @@
-export type ProjectStatus = "not_started" | "active" | "paused" | "completed";
+export type ProjectStatus = "not_started" | "active" | "paused" | "completed" | "abandoned";
 export type WarningType = "parallel_limit" | "deadline_risk" | "stagnation";
 export type FeedbackKind = "small" | "big";
 export type ActivityType =
@@ -126,7 +126,7 @@ export interface Project {
   id: string;
   title: string;
   status: ProjectStatus;
-  completedFromStatus?: Exclude<ProjectStatus, "completed">;
+  completedFromStatus?: Exclude<ProjectStatus, "completed" | "abandoned">;
   templateId?: string;
   templateSnapshot: TemplateSnapshot;
   recurrence: RecurrenceRule;
@@ -135,6 +135,7 @@ export interface Project {
   progressObjects: ProgressObjectInstance[];
   slots: SlotInstance[];
   taskTree?: TaskNode;
+  hiddenAt?: string;
   createdAt: string;
   updatedAt: string;
 }

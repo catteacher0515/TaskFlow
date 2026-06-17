@@ -51,6 +51,26 @@ describe("evaluateWarnings", () => {
     expect(warnings.find((warning) => warning.type === "parallel_limit")?.message).toContain("进行中项目 3 / 2");
   });
 
+  it("ignores hidden projects when counting parallel limit and project warnings", () => {
+    const warnings = evaluateWarnings({
+      settings,
+      projects: [
+        makeProject({ id: "project-1", status: "active" }),
+        makeProject({ id: "project-2", status: "active", hiddenAt: "2026-06-16T09:30:00.000Z" } as never),
+        makeProject({ id: "project-3", status: "active" })
+      ],
+      activity: [],
+      now: "2026-06-16T10:00:00.000Z"
+    });
+
+    expect(warnings).not.toContainEqual(
+      expect.objectContaining({
+        type: "parallel_limit"
+      })
+    );
+    expect(warnings.every((warning) => warning.projectId !== "project-2")).toBe(true);
+  });
+
   it("returns a blocking deadline risk warning for a near deadline with insufficient slots and stage progress", () => {
     const warnings = evaluateWarnings({
       settings,

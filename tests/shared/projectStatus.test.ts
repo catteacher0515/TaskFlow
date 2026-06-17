@@ -34,7 +34,17 @@ describe("project status", () => {
 
   it("does not reopen a project that is not completed", () => {
     expect(() => reopenProject(makeProject(), "2026-06-16T08:15:00.000Z")).toThrow(
-      "Project is not completed: project-1"
+      "Project is not reopenable: project-1"
     );
+  });
+
+  it("reopens an abandoned project to its previous status", () => {
+    const active = setProjectStatus(makeProject(), "active", "2026-06-16T08:05:00.000Z");
+    const abandoned = setProjectStatus(active, "abandoned" as never, "2026-06-16T08:10:00.000Z");
+    const reopened = reopenProject(abandoned, "2026-06-16T08:15:00.000Z");
+
+    expect(reopened.status).toBe("active");
+    expect(reopened.completedFromStatus).toBeUndefined();
+    expect(reopened.updatedAt).toBe("2026-06-16T08:15:00.000Z");
   });
 });

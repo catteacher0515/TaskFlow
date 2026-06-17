@@ -63,3 +63,9 @@ export function completeFocusSession(
     }
   };
 }
+
+export function exitFocusMode(): FocusModeState {
+  return {
+    status: "inactive"
+  };
+}

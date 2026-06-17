@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { FocusModeState, Warning } from "../../src/shared/types";
 import { canMutateProject, completeFocusSession, selectFocusProject } from "../../src/shared/focusMode";
+import { hasParallelLimitGate } from "../../src/shared/parallelLimitGate";
 
 const blockingWarning: Warning = {
   id: "warning-1",
@@ -115,5 +116,43 @@ describe("focus mode rules", () => {
     };
 
     expect(() => completeFocusSession(focusMode, "blocked")).toThrow("Focus session already completed");
+  });
+
+  it("requires unresolved selection only for a parallel limit warning while focus mode is inactive", () => {
+    expect(
+      hasParallelLimitGate(
+        [
+          {
+            ...blockingWarning,
+            type: "parallel_limit",
+            projectId: undefined
+          }
+        ],
+        { status: "inactive" }
+      )
+    ).toBe(true);
+  });
+
+  it("does not trigger the gate for non-parallel blocking warnings or after a project is selected", () => {
+    expect(hasParallelLimitGate([blockingWarning], { status: "inactive" })).toBe(false);
+    expect(
+      hasParallelLimitGate(
+        [
+          {
+            ...blockingWarning,
+            type: "parallel_limit",
+            projectId: undefined
+          }
+        ],
+        {
+          status: "active",
+          selectedProjectId: "project-1",
+          session: {
+            startedAt: "2026-06-16T10:00:00.000Z",
+            durationMinutes: 5
+          }
+        }
+      )
+    ).toBe(false);
   });
 });
