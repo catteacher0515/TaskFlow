@@ -1,6 +1,6 @@
 import request from "supertest";
 import { afterEach, describe, expect, it } from "vitest";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { createApp } from "../../src/server/app";
@@ -59,6 +59,26 @@ describe("Express API routes", () => {
     expect(response.body.projects).toEqual([]);
     expect(response.body.activity).toEqual([]);
     expect(response.body.warnings).toEqual([]);
+  });
+
+  it("serves the built client index when a static client bundle is present", async () => {
+    const rootDir = await mkdtemp(path.join(tmpdir(), "taskflow-static-"));
+    roots.push(rootDir);
+    const clientDir = path.join(rootDir, "dist", "client");
+    await initializeDataDir(rootDir);
+    await mkdir(clientDir, { recursive: true });
+    await writeFile(path.join(clientDir, "index.html"), "<!doctype html><html><body>TaskFlow Deploy</body></html>", "utf8");
+
+    const app = createApp({
+      rootDir,
+      now: () => "2026-06-16T09:00:00.000Z",
+      id: () => "generated-id"
+    });
+
+    const response = await request(app).get("/").expect(200);
+
+    expect(response.text).toContain("TaskFlow Deploy");
+    expect(response.headers["content-type"]).toContain("text/html");
   });
 
   it("creates a project from a template", async () => {

@@ -7,9 +7,12 @@
     "dev": "vite --host 127.0.0.1",
     "dev:server": "tsx src/server/index.ts",
     "build": "tsc --noEmit && vite build",
+    "local:start": "node scripts/taskflow-local.mjs start",
+    "local:open": "node scripts/taskflow-local.mjs open",
+    "local:stop": "node scripts/taskflow-local.mjs stop",
     "test": "vitest run",
     "test:watch": "vitest",
-    "start": "node dist/server/index.js"
+    "start": "tsx src/server/index.ts"
   },
   "dependencies": {
     "@vitejs/plugin-react": "^4.5.0",

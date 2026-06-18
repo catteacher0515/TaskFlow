@@ -17,7 +17,7 @@ const defaultFocusMode: FocusModeState = {
 };
 
 export function dataDir(rootDir: string) {
-  return path.join(rootDir, "data");
+  return process.env.DATA_DIR ? path.resolve(process.env.DATA_DIR) : path.join(rootDir, "data");
 }
 
 export async function initializeDataDir(rootDir: string) {

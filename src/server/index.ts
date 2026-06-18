@@ -4,6 +4,7 @@ import { initializeDataDir } from "./storage";
 
 const rootDir = process.cwd();
 const port = Number(process.env.PORT ?? 4317);
+const host = process.env.HOST ?? "0.0.0.0";
 
 await initializeDataDir(rootDir);
 
@@ -13,6 +14,6 @@ const app = createApp({
   id: () => randomUUID()
 });
 
-app.listen(port, "127.0.0.1", () => {
-  console.log(`TaskFlow local API listening on http://127.0.0.1:${port}`);
+app.listen(port, host, () => {
+  console.log(`TaskFlow API listening on http://${host}:${port}`);
 });

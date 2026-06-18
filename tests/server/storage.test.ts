@@ -52,6 +52,20 @@ describe("local file storage", () => {
     expect(await readFile(path.join(dataDir(root), "activity-log.jsonl"), "utf8")).toBe("");
   });
 
+  it("uses DATA_DIR when provided", async () => {
+    const root = await makeRoot();
+    process.env.DATA_DIR = path.join(root, "runtime-data");
+
+    await initializeDataDir(root);
+    const state = await readState(root);
+
+    expect(state.projects).toEqual([]);
+    expect(await readFile(path.join(process.env.DATA_DIR, "activity-log.jsonl"), "utf8")).toBe("");
+    expect(dataDir(root)).toBe(process.env.DATA_DIR);
+
+    delete process.env.DATA_DIR;
+  });
+
   it("throws for corrupt JSON without overwriting the original file", async () => {
     const root = await makeRoot();
     await initializeDataDir(root);

@@ -204,7 +204,14 @@ export function FeedbackPage({ state, selectedProjectId, onRevokeActivity, onRev
                 </button>
               </>
             ) : (
-              <button className="secondary-action compact" type="button" onClick={() => setIsBulkMode(true)}>
+              <button
+                className="secondary-action compact"
+                type="button"
+                onClick={() => {
+                  setIsBulkMode(true);
+                  setSelectedActivityIds([]);
+                }}
+              >
                 批量管理
               </button>
             )
