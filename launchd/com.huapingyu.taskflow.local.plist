@@ -12,7 +12,7 @@
     <array>
       <string>/bin/zsh</string>
       <string>-lc</string>
-      <string>npm run local:start</string>
+      <string>npm run local:daemon</string>
     </array>
 
     <key>EnvironmentVariables</key>
@@ -25,7 +25,7 @@
     <true/>
 
     <key>KeepAlive</key>
-    <false/>
+    <true/>
 
     <key>StandardOutPath</key>
     <string>/Users/huapingyu/dev/TaskFlow/.taskflow/launchd.log</string>

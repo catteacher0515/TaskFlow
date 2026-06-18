@@ -13,8 +13,8 @@
 推荐做法：
 
 - 把这个地址加到浏览器标签栏
-- 第一次使用时双击 [open-taskflow.command](/Users/huapingyu/dev/TaskFlow/open-taskflow.command:1)
-- 想关闭服务时双击 [stop-taskflow.command](/Users/huapingyu/dev/TaskFlow/stop-taskflow.command:1)
+- 第一次使用时双击 [open-taskflow.command](open-taskflow.command)
+- 想关闭服务时双击 [stop-taskflow.command](stop-taskflow.command)
 
 ### 电脑重启后怎么打开
 
@@ -24,23 +24,34 @@
 双击 `open-taskflow.command`，然后访问 `http://taskflow.localhost:4317`
 
 2. 登录后自动启动  
-双击 [install-taskflow-login-start.command](/Users/huapingyu/dev/TaskFlow/install-taskflow-login-start.command:1)  
-之后每次登录 Mac，TaskFlow 都会在后台自动启动
+双击 [install-taskflow-login-start.command](install-taskflow-login-start.command)  
+之后每次登录 Mac，TaskFlow 都会在后台自动启动；如果服务意外退出，`launchd` 也会自动拉起
 
-如果之后不想自动启动了，双击 [uninstall-taskflow-login-start.command](/Users/huapingyu/dev/TaskFlow/uninstall-taskflow-login-start.command:1) 即可。
+如果之后不想自动启动了，双击 [uninstall-taskflow-login-start.command](uninstall-taskflow-login-start.command) 即可。
 
 ### 终端方式
 
 如果你更习惯终端，也可以用：
 
 ```bash
+cd /Users/huapingyu/dev/TaskFlow
 npm run local:open
 ```
 
 关闭：
 
 ```bash
+cd /Users/huapingyu/dev/TaskFlow
 npm run local:stop
+```
+
+如果你不想每次先 `cd`，可以先双击 [install-taskflow-cli.command](install-taskflow-cli.command)。
+
+安装后可用：
+
+```bash
+taskflow-open
+taskflow-stop
 ```
 
 ## 开发运行

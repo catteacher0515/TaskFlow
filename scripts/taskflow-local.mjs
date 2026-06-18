@@ -159,6 +159,27 @@ function buildClient() {
   runCommand("npm", ["run", "build"]);
 }
 
+function runServerInForeground() {
+  const child = spawn("npm", ["start"], {
+    cwd: rootDir,
+    stdio: "inherit",
+    shell: process.platform === "win32",
+    env: {
+      ...process.env,
+      PORT: String(port)
+    }
+  });
+
+  child.on("exit", (code, signal) => {
+    if (signal) {
+      process.kill(process.pid, signal);
+      return;
+    }
+
+    process.exit(code ?? 0);
+  });
+}
+
 function startDetachedServer() {
   ensureRuntimeDir();
   const logFd = openSync(logFile, "a");
@@ -223,6 +244,13 @@ async function main() {
 
   if (command === "start") {
     await ensureStarted();
+    return;
+  }
+
+  if (command === "daemon") {
+    stopConflictingServers();
+    buildClient();
+    runServerInForeground();
     return;
   }
 
