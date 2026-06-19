@@ -439,16 +439,11 @@ h3 {
 }
 
 .project-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 12px;
+  position: relative;
   width: 100%;
   border: 1px solid transparent;
   border-radius: 8px;
-  padding: 12px;
   background: transparent;
-  text-align: left;
-  cursor: pointer;
 }
 
 .project-row:hover,
@@ -463,12 +458,89 @@ h3 {
   background: #eef5f4;
 }
 
+.project-row-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 88px 12px 12px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.project-row-main:focus-visible {
+  outline: none;
+}
+
 .project-title {
   min-width: 0;
   overflow-wrap: anywhere;
   color: #18202f;
   font-weight: 700;
   line-height: 1.4;
+}
+
+.project-row-actions {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+}
+
+.project-row-menu-toggle {
+  border: 1px solid #d7d0c2;
+  border-radius: 999px;
+  padding: 4px 10px;
+  background: #fffdf8;
+  color: #49505c;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.project-row-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 92px;
+  padding: 6px;
+  border: 1px solid #ddd5c9;
+  border-radius: 10px;
+  background: #fffdf8;
+  box-shadow: 0 8px 24px rgba(24, 32, 47, 0.12);
+  z-index: 2;
+}
+
+.project-row-menu button {
+  width: 100%;
+  border: 0;
+  border-radius: 8px;
+  padding: 8px 10px;
+  background: transparent;
+  color: #18202f;
+  text-align: left;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.project-row-menu button:hover,
+.project-row-menu button:focus-visible {
+  background: #f4efe4;
+  outline: none;
+}
+
+.project-rename-input {
+  width: 100%;
+  border: 1px solid #b7c6c9;
+  border-radius: 8px;
+  padding: 8px 10px;
+  color: #18202f;
+  font: inherit;
+  font-weight: 700;
+  background: #fffdf8;
 }
 
 .project-status {
@@ -807,16 +879,22 @@ h3 {
   justify-content: space-between;
 }
 
-.todo-check {
+.todo-primary {
   display: flex;
   gap: 10px;
   align-items: flex-start;
   min-width: 0;
   flex: 1 1 auto;
+}
+
+.todo-check {
+  display: flex;
+  align-items: flex-start;
+  flex: 0 0 auto;
   cursor: pointer;
 }
 
-.todo-check input {
+.todo-check > input[type="checkbox"] {
   width: 18px;
   height: 18px;
   margin: 2px 0 0;
@@ -832,6 +910,8 @@ h3 {
 }
 
 .todo-title {
+  display: block;
+  flex: 1 1 auto;
   min-width: 0;
   color: #18202f;
   font-weight: 750;
@@ -839,11 +919,75 @@ h3 {
   overflow-wrap: anywhere;
 }
 
+.task-title-label {
+  cursor: pointer;
+}
+
+.task-rename-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  width: 100%;
+  border: 1px solid #b7c6c9;
+  border-radius: 8px;
+  padding: 7px 10px;
+  color: #18202f;
+  font: inherit;
+  font-weight: 700;
+  background: #fffdf8;
+}
+
 .todo-meta {
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: 8px;
+}
+
+.task-row-actions {
+  position: relative;
+}
+
+.task-row-menu-toggle {
+  border: 1px solid #d7d0c2;
+  border-radius: 999px;
+  padding: 4px 10px;
+  background: #fffdf8;
+  color: #49505c;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.task-row-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 92px;
+  padding: 6px;
+  border: 1px solid #ddd5c9;
+  border-radius: 10px;
+  background: #fffdf8;
+  box-shadow: 0 8px 24px rgba(24, 32, 47, 0.12);
+  z-index: 3;
+}
+
+.task-row-menu button {
+  width: 100%;
+  border: 0;
+  border-radius: 8px;
+  padding: 8px 10px;
+  background: transparent;
+  color: #18202f;
+  text-align: left;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.task-row-menu button:hover,
+.task-row-menu button:focus-visible {
+  background: #f4efe4;
+  outline: none;
 }
 
 .task-start {

@@ -62,6 +62,13 @@ export function updateProjectStatusApi(projectId: string, status: ProjectStatus)
   });
 }
 
+export function updateProjectTitleApi(projectId: string, title: string): Promise<AppState> {
+  return request<AppState>(`/api/projects/${projectId}/title`, {
+    method: "PATCH",
+    body: JSON.stringify({ title })
+  });
+}
+
 export function reopenProjectApi(projectId: string): Promise<AppState> {
   return request<AppState>(`/api/projects/${projectId}/reopen`, {
     method: "POST",
@@ -119,6 +126,19 @@ export function updateTaskStatusApi(projectId: string, taskId: string, status: T
   return request<AppState>(`/api/projects/${projectId}/tasks/${taskId}/status`, {
     method: "PATCH",
     body: JSON.stringify({ status })
+  });
+}
+
+export function updateTaskTitleApi(projectId: string, taskId: string, title: string): Promise<AppState> {
+  return request<AppState>(`/api/projects/${projectId}/tasks/${taskId}/title`, {
+    method: "PATCH",
+    body: JSON.stringify({ title })
+  });
+}
+
+export function deleteTaskApi(projectId: string, taskId: string): Promise<AppState> {
+  return request<AppState>(`/api/projects/${projectId}/tasks/${taskId}`, {
+    method: "DELETE"
   });
 }
 

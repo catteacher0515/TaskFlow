@@ -18,6 +18,17 @@ export interface TransitionTaskInput {
   now: string;
 }
 
+export interface RenameTaskInput {
+  taskId: string;
+  title: string;
+  now: string;
+}
+
+export interface DeleteTaskInput {
+  taskId: string;
+  now: string;
+}
+
 export function createRootTask(input: { id: string; title: string; now: string }): TaskNode {
   return {
     id: input.id,
@@ -121,6 +132,45 @@ export function transitionTask(project: Project, input: TransitionTaskInput): { 
   };
 }
 
+export function renameTask(project: Project, input: RenameTaskInput): Project {
+  const taskTree = requireTaskTree(project);
+  const result = updateTask(taskTree, input.taskId, (task) => ({
+    ...task,
+    title: input.title,
+    updatedAt: input.now
+  }));
+
+  if (!result.found) {
+    throw new Error(`Unknown task: ${input.taskId}`);
+  }
+
+  return {
+    ...project,
+    taskTree: result.node,
+    updatedAt: input.now
+  };
+}
+
+export function deleteTask(project: Project, input: DeleteTaskInput): Project {
+  const taskTree = requireTaskTree(project);
+
+  if (taskTree.id === input.taskId) {
+    throw new Error("Cannot delete root task");
+  }
+
+  const result = removeTask(taskTree, input.taskId, input.now);
+
+  if (!result.found) {
+    throw new Error(`Unknown task: ${input.taskId}`);
+  }
+
+  return {
+    ...project,
+    taskTree: result.node,
+    updatedAt: input.now
+  };
+}
+
 function requireTaskTree(project: Project): TaskNode {
   if (!project.taskTree) {
     throw new Error("Project does not define a task tree");
@@ -183,6 +233,28 @@ function updateTask(
   return {
     found,
     node: found ? { ...node, children } : node
+  };
+}
+
+function removeTask(node: TaskNode, taskId: string, now: string): { node: TaskNode; found: boolean } {
+  let found = false;
+  const children = node.children.flatMap((child) => {
+    if (child.id === taskId) {
+      found = true;
+      return [];
+    }
+
+    const result = removeTask(child, taskId, now);
+    if (result.found) {
+      found = true;
+    }
+
+    return [result.node];
+  });
+
+  return {
+    found,
+    node: found ? { ...node, children, updatedAt: now } : node
   };
 }
 

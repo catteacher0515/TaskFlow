@@ -395,15 +395,15 @@ describe("App", () => {
     expect(screen.getByRole("button", { name: "待开始 1" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "暂停 1" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "已完成 1" })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /已完成项目/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "选择项目：已完成项目" })).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "已完成 1" }));
 
-    expect(screen.getByRole("button", { name: /已完成项目/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "选择项目：已完成项目" })).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "进行中 1" }));
 
-    expect(screen.queryByRole("button", { name: /每周 GitHub 精选 2026-W25/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "选择项目：每周 GitHub 精选 2026-W25" })).not.toBeInTheDocument();
   });
 
   it("opens a dedicated feedback page from the current panel", async () => {
@@ -888,6 +888,228 @@ describe("App", () => {
     expect(screen.getByText("五月反馈二")).toBeInTheDocument();
   });
 
+  it("renames a project from the project list more menu and updates the detail title", async () => {
+    const user = userEvent.setup();
+    const renamedState: AppState = {
+      ...appState,
+      projects: appState.projects.map((project) =>
+        project.id === "project-1" ? { ...project, title: "发布平台视频字段统计" } : project
+      )
+    };
+
+    globalThis.fetch = vi.fn(async (input, init) => {
+      const path = String(input);
+      if (path === "/api/state") {
+        return jsonResponse(appState);
+      }
+      if (path === "/api/projects/project-1/title") {
+        expect(init).toMatchObject({
+          method: "PATCH",
+          body: JSON.stringify({ title: "发布平台视频字段统计" })
+        });
+        return jsonResponse(renamedState);
+      }
+      return jsonResponse(appState);
+    });
+
+    render(<App />);
+
+    await screen.findByRole("heading", { name: "任务进度" });
+    await user.click(screen.getByRole("button", { name: "项目更多操作：每周 GitHub 精选 2026-W25" }));
+    await user.click(screen.getByRole("button", { name: "重命名" }));
+
+    const renameInput = screen.getByRole("textbox", { name: "重命名项目：每周 GitHub 精选 2026-W25" });
+    await user.clear(renameInput);
+    await user.type(renameInput, "发布平台视频字段统计{enter}");
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /项目更多操作：发布平台视频字段统计/ })).toBeInTheDocument();
+    });
+    expect(screen.getByRole("heading", { name: "发布平台视频字段统计" })).toBeInTheDocument();
+  });
+
+  it("renames a non-root task from the task menu", async () => {
+    const user = userEvent.setup();
+    const genericProject = {
+      id: "generic-project-1",
+      title: "整理播客选题",
+      status: "active" as const,
+      templateId: "generic-task",
+      templateSnapshot: {
+        templateId: "generic-task",
+        templateName: "通用任务",
+        stages: [],
+        slots: [],
+        minimumActions: [],
+        warningRules: {}
+      },
+      recurrence: { kind: "none" as const },
+      stages: [],
+      progressObjects: [],
+      slots: [],
+      taskTree: {
+        id: "generic-project-1-root",
+        title: "整理播客选题",
+        status: "not_started" as const,
+        children: [
+          {
+            id: "task-1",
+            title: "收集候选选题",
+            status: "not_started" as const,
+            children: [],
+            createdAt: "2026-06-16T08:05:00.000Z",
+            updatedAt: "2026-06-16T08:05:00.000Z"
+          }
+        ],
+        createdAt: "2026-06-16T08:00:00.000Z",
+        updatedAt: "2026-06-16T08:05:00.000Z"
+      },
+      createdAt: "2026-06-16T08:00:00.000Z",
+      updatedAt: "2026-06-16T08:05:00.000Z"
+    };
+    const renamedProject = {
+      ...genericProject,
+      taskTree: {
+        ...genericProject.taskTree,
+        children: [
+          {
+            ...genericProject.taskTree.children[0],
+            title: "确认推荐仓库名单"
+          }
+        ]
+      }
+    };
+    const initialState = {
+      ...appState,
+      projects: [...appState.projects, genericProject]
+    };
+    const renamedState = {
+      ...appState,
+      projects: [...appState.projects, renamedProject]
+    };
+
+    globalThis.fetch = vi.fn(async (input, init) => {
+      const path = String(input);
+      if (path === "/api/state") {
+        return jsonResponse(initialState);
+      }
+      if (path === "/api/projects/generic-project-1/tasks/task-1/title") {
+        expect(init).toMatchObject({
+          method: "PATCH",
+          body: JSON.stringify({ title: "确认推荐仓库名单" })
+        });
+        return jsonResponse(renamedState);
+      }
+      return jsonResponse(initialState);
+    });
+
+    render(<App />);
+
+    await user.click(await screen.findByRole("button", { name: "选择项目：整理播客选题" }));
+    await user.click(screen.getByRole("button", { name: "任务更多操作：收集候选选题" }));
+    await user.click(screen.getByRole("button", { name: "重命名" }));
+
+    const renameInput = screen.getByRole("textbox", { name: "重命名任务：收集候选选题" });
+    expect(renameInput).toHaveValue("收集候选选题");
+    await user.clear(renameInput);
+    await user.type(renameInput, "确认推荐仓库名单{enter}");
+
+    expect(await screen.findByText("确认推荐仓库名单")).toBeInTheDocument();
+  });
+
+  it("deletes a non-root task from the context menu after confirmation", async () => {
+    const user = userEvent.setup();
+    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
+    const genericProject = {
+      id: "generic-project-1",
+      title: "整理播客选题",
+      status: "active" as const,
+      templateId: "generic-task",
+      templateSnapshot: {
+        templateId: "generic-task",
+        templateName: "通用任务",
+        stages: [],
+        slots: [],
+        minimumActions: [],
+        warningRules: {}
+      },
+      recurrence: { kind: "none" as const },
+      stages: [],
+      progressObjects: [],
+      slots: [],
+      taskTree: {
+        id: "generic-project-1-root",
+        title: "整理播客选题",
+        status: "not_started" as const,
+        children: [
+          {
+            id: "task-1",
+            title: "收集候选选题",
+            status: "not_started" as const,
+            children: [
+              {
+                id: "task-1-1",
+                title: "翻收藏",
+                status: "not_started" as const,
+                children: [],
+                createdAt: "2026-06-16T08:06:00.000Z",
+                updatedAt: "2026-06-16T08:06:00.000Z"
+              }
+            ],
+            createdAt: "2026-06-16T08:05:00.000Z",
+            updatedAt: "2026-06-16T08:05:00.000Z"
+          }
+        ],
+        createdAt: "2026-06-16T08:00:00.000Z",
+        updatedAt: "2026-06-16T08:05:00.000Z"
+      },
+      createdAt: "2026-06-16T08:00:00.000Z",
+      updatedAt: "2026-06-16T08:05:00.000Z"
+    };
+    const initialState = {
+      ...appState,
+      projects: [...appState.projects, genericProject]
+    };
+    const deletedState = {
+      ...appState,
+      projects: [
+        ...appState.projects,
+        {
+          ...genericProject,
+          taskTree: {
+            ...genericProject.taskTree,
+            children: []
+          }
+        }
+      ]
+    };
+
+    globalThis.fetch = vi.fn(async (input, init) => {
+      const path = String(input);
+      if (path === "/api/state") {
+        return jsonResponse(initialState);
+      }
+      if (path === "/api/projects/generic-project-1/tasks/task-1") {
+        expect(init).toMatchObject({
+          method: "DELETE"
+        });
+        return jsonResponse(deletedState);
+      }
+      return jsonResponse(initialState);
+    });
+
+    render(<App />);
+
+    await user.click(await screen.findByRole("button", { name: "选择项目：整理播客选题" }));
+    await user.click(screen.getByRole("button", { name: "任务更多操作：收集候选选题" }));
+    await user.click(screen.getByRole("button", { name: "删除" }));
+
+    expect(confirmSpy).toHaveBeenCalledWith("确定要删除这个任务吗？它会被物理删除，且下级任务也会一并删除。");
+    await waitFor(() => {
+      expect(screen.queryByText("收集候选选题")).not.toBeInTheDocument();
+    });
+  });
+
   it("shows focus mode when active", async () => {
     mockState({
       ...appState,
@@ -1165,7 +1387,7 @@ describe("App", () => {
 
     render(<App />);
 
-    await user.click(await screen.findByRole("button", { name: /整理播客选题/ }));
+    await user.click(await screen.findByRole("button", { name: "选择项目：整理播客选题" }));
 
     expect(screen.getByRole("heading", { name: "整理播客选题" })).toBeInTheDocument();
     expect(screen.getByText("收束模式下该项目只读")).toBeInTheDocument();
@@ -1521,7 +1743,7 @@ describe("App", () => {
 
     render(<App />);
 
-    await user.click(await screen.findByRole("button", { name: /整理播客选题/ }));
+    await user.click(await screen.findByRole("button", { name: "选择项目：整理播客选题" }));
     await user.type(screen.getByLabelText("添加到整理播客选题"), "收集候选选题");
     await user.click(screen.getByRole("button", { name: "添加小任务" }));
 
@@ -1655,7 +1877,7 @@ describe("App", () => {
 
     render(<App />);
 
-    await user.click(await screen.findByRole("button", { name: /整理播客选题/ }));
+    await user.click(await screen.findByRole("button", { name: "选择项目：整理播客选题" }));
     fireEvent.contextMenu(screen.getByText("收集候选选题"));
     await user.click(screen.getByRole("menuitem", { name: "不做了" }));
 
@@ -1704,10 +1926,10 @@ describe("App", () => {
 
     expect(await screen.findByRole("heading", { name: "每周 GitHub 精选 2026-W25" })).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: /暂停的项目/ }));
+    await user.click(screen.getByRole("button", { name: "选择项目：暂停的项目" }));
 
     expect(screen.getByRole("heading", { name: "暂停的项目" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /暂停的项目/ })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "选择项目：暂停的项目" })).toHaveAttribute("aria-pressed", "true");
   });
 
   it("starts a not-started project from the detail panel", async () => {

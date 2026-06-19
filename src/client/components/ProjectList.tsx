@@ -5,6 +5,7 @@ interface ProjectListProps {
   projects: Project[];
   selectedProjectId?: string;
   onSelectProject: (projectId: string) => void;
+  onRenameProject: (projectId: string, title: string) => Promise<void>;
 }
 
 const statusLabels: Record<ProjectStatus, string> = {
@@ -25,14 +26,42 @@ const defaultExpanded: Record<ProjectStatus, boolean> = {
   abandoned: false
 };
 
-export function ProjectList({ projects, selectedProjectId, onSelectProject }: ProjectListProps) {
+export function ProjectList({ projects, selectedProjectId, onSelectProject, onRenameProject }: ProjectListProps) {
   const [expandedGroups, setExpandedGroups] = useState<Record<ProjectStatus, boolean>>(defaultExpanded);
+  const [menuProjectId, setMenuProjectId] = useState<string | null>(null);
+  const [editingProjectId, setEditingProjectId] = useState<string | null>(null);
+  const [editingTitle, setEditingTitle] = useState("");
   const groupedProjects = statusOrder
     .map((status) => ({
       status,
       projects: projects.filter((project) => project.status === status)
     }))
     .filter((group) => group.projects.length > 0);
+
+  async function saveRename(project: Project) {
+    const nextTitle = editingTitle.trim();
+
+    if (!nextTitle || nextTitle === project.title) {
+      cancelRename();
+      return;
+    }
+
+    await onRenameProject(project.id, nextTitle);
+    setEditingProjectId(null);
+    setEditingTitle("");
+    setMenuProjectId(null);
+  }
+
+  function startRename(project: Project) {
+    setEditingProjectId(project.id);
+    setEditingTitle(project.title);
+    setMenuProjectId(null);
+  }
+
+  function cancelRename() {
+    setEditingProjectId(null);
+    setEditingTitle("");
+  }
 
   return (
     <section className="panel" aria-labelledby="project-list-title">
@@ -66,18 +95,74 @@ export function ProjectList({ projects, selectedProjectId, onSelectProject }: Pr
                 {isExpanded ? (
                   <div className="project-group-items">
                     {group.projects.map((project) => (
-                      <button
+                      <div
                         className={`project-row${project.id === selectedProjectId ? " selected" : ""}`}
                         key={project.id}
-                        type="button"
-                        aria-pressed={project.id === selectedProjectId}
-                        onClick={() => onSelectProject(project.id)}
                       >
-                        <span className="project-title">{project.title}</span>
-                        <span className={`project-status status-${project.status}`}>
-                          {statusLabels[project.status]}
-                        </span>
-                      </button>
+                        <button
+                          className="project-row-main"
+                          type="button"
+                          aria-pressed={project.id === selectedProjectId}
+                          aria-label={`选择项目：${project.title}`}
+                          onClick={() => onSelectProject(project.id)}
+                        >
+                          {editingProjectId === project.id ? (
+                            <input
+                              className="project-rename-input"
+                              type="text"
+                              aria-label={`重命名项目：${project.title}`}
+                              value={editingTitle}
+                              autoFocus
+                              onChange={(event) => setEditingTitle(event.target.value)}
+                              onBlur={() => {
+                                void saveRename(project);
+                              }}
+                              onKeyDown={(event) => {
+                                if (event.key === "Enter") {
+                                  event.preventDefault();
+                                  void saveRename(project);
+                                }
+
+                                if (event.key === "Escape") {
+                                  event.preventDefault();
+                                  cancelRename();
+                                }
+                              }}
+                            />
+                          ) : (
+                            <span className="project-title">{project.title}</span>
+                          )}
+                          <span className={`project-status status-${project.status}`}>
+                            {statusLabels[project.status]}
+                          </span>
+                        </button>
+
+                        <div className="project-row-actions">
+                          <button
+                            className="project-row-menu-toggle"
+                            type="button"
+                            aria-expanded={menuProjectId === project.id}
+                            aria-label={`项目更多操作：${project.title}`}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              setMenuProjectId((current) => (current === project.id ? null : project.id));
+                            }}
+                          >
+                            更多
+                          </button>
+
+                          {menuProjectId === project.id ? (
+                            <div className="project-row-menu" aria-label={`${project.title}更多操作`}>
+                              <button
+                                type="button"
+                                onClick={() => startRename(project)}
+                              >
+                                重命名
+                              </button>
+                            </div>
+                          ) : null}
+                        </div>
+                      </div>
                     ))}
                   </div>
                 ) : null}

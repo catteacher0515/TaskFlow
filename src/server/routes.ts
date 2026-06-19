@@ -5,7 +5,7 @@ import {
   fillSlot,
   transitionProgressObject
 } from "../shared/progress";
-import { addTaskChild, transitionTask } from "../shared/taskTree";
+import { addTaskChild, deleteTask, renameTask, transitionTask } from "../shared/taskTree";
 import { canMutateProject, completeFocusSession, exitFocusMode, selectFocusProject } from "../shared/focusMode";
 import { hasParallelLimitGate } from "../shared/parallelLimitGate";
 import { createProjectFromTemplate } from "../shared/projectFactory";
@@ -86,6 +86,26 @@ export function registerRoutes(app: Express, deps: RouteDeps) {
     res.json(await readStateWithWarnings(deps));
   }));
 
+  app.patch("/api/projects/:projectId/title", asyncRoute(async (req, res) => {
+    const title = parseRequiredString(req.body.title, "Project title is required");
+    const now = deps.now();
+
+    await mutateProject(deps, req.params.projectId, (project) => ({
+      ...project,
+      title,
+      taskTree: project.taskTree
+        ? {
+            ...project.taskTree,
+            title,
+            updatedAt: now
+          }
+        : project.taskTree,
+      updatedAt: now
+    }));
+
+    res.json(await readStateWithWarnings(deps));
+  }));
+
   app.post("/api/projects/:projectId/reopen", asyncRoute(async (req, res) => {
     await mutateProject(deps, req.params.projectId, (project) => reopenProject(project, deps.now()));
 
@@ -158,6 +178,31 @@ export function registerRoutes(app: Express, deps: RouteDeps) {
         });
       }
     }
+
+    res.json(await readStateWithWarnings(deps));
+  }));
+
+  app.patch("/api/projects/:projectId/tasks/:taskId/title", asyncRoute(async (req, res) => {
+    const title = parseRequiredString(req.body.title, "Task title is required");
+
+    await mutateProject(deps, req.params.projectId, (project) =>
+      renameTask(project, {
+        taskId: req.params.taskId,
+        title,
+        now: deps.now()
+      })
+    );
+
+    res.json(await readStateWithWarnings(deps));
+  }));
+
+  app.delete("/api/projects/:projectId/tasks/:taskId", asyncRoute(async (req, res) => {
+    await mutateProject(deps, req.params.projectId, (project) =>
+      deleteTask(project, {
+        taskId: req.params.taskId,
+        now: deps.now()
+      })
+    );
 
     res.json(await readStateWithWarnings(deps));
   }));
@@ -433,6 +478,7 @@ function mapDomainError(error: unknown): HttpError | undefined {
   if (
     error.message.startsWith("Slot already filled:") ||
     error.message.startsWith("Task tree depth limit reached:") ||
+    error.message === "Cannot delete root task" ||
     error.message === "Focus session already completed"
   ) {
     return new HttpError(409, error.message);

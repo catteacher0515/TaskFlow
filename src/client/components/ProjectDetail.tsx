@@ -16,6 +16,8 @@ interface ProjectDetailProps {
   onHideProject?: (projectId: string) => Promise<void>;
   onAddTaskChild?: (projectId: string, taskId: string, title: string) => Promise<void>;
   onUpdateTaskStatus?: (projectId: string, taskId: string, status: TaskNodeStatus) => Promise<void>;
+  onRenameTask?: (projectId: string, taskId: string, title: string) => Promise<void>;
+  onDeleteTask?: (projectId: string, taskId: string) => Promise<void>;
   isReadOnly?: boolean;
   readOnlyMessage?: string;
 }
@@ -170,6 +172,8 @@ export function ProjectDetail({
   onHideProject,
   onAddTaskChild,
   onUpdateTaskStatus,
+  onRenameTask,
+  onDeleteTask,
   isReadOnly = false,
   readOnlyMessage
 }: ProjectDetailProps) {
@@ -178,24 +182,29 @@ export function ProjectDetail({
   const [slotSelections, setSlotSelections] = useState<Record<string, string>>({});
   const [taskTitles, setTaskTitles] = useState<Record<string, string>>({});
   const [taskContextMenu, setTaskContextMenu] = useState<TaskContextMenuState | undefined>();
+  const [taskMenuId, setTaskMenuId] = useState<string | undefined>();
+  const [editingTaskId, setEditingTaskId] = useState<string | undefined>();
+  const [editingTaskTitle, setEditingTaskTitle] = useState("");
 
   useEffect(() => {
-    if (!taskContextMenu) {
+    if (!taskContextMenu && !taskMenuId) {
       return undefined;
     }
 
     function handlePointerDown(event: PointerEvent) {
       const target = event.target;
-      if (target instanceof HTMLElement && target.closest(".task-context-menu")) {
+      if (target instanceof HTMLElement && (target.closest(".task-context-menu") || target.closest(".task-row-actions"))) {
         return;
       }
 
       setTaskContextMenu(undefined);
+      setTaskMenuId(undefined);
     }
 
     function handleEscape(event: KeyboardEvent) {
       if (event.key === "Escape") {
         setTaskContextMenu(undefined);
+        setTaskMenuId(undefined);
       }
     }
 
@@ -206,7 +215,7 @@ export function ProjectDetail({
       window.removeEventListener("pointerdown", handlePointerDown);
       window.removeEventListener("keydown", handleEscape);
     };
-  }, [taskContextMenu]);
+  }, [taskContextMenu, taskMenuId]);
 
   if (!project) {
     return (
@@ -293,6 +302,7 @@ export function ProjectDetail({
 
     await onUpdateTaskStatus(projectId, task.id, status);
     setTaskContextMenu(undefined);
+    setTaskMenuId(undefined);
 
     if (status === "completed" && options?.playSound) {
       playCompletionTone();
@@ -308,6 +318,49 @@ export function ProjectDetail({
     if (task.status === "completed") {
       await handleTaskStatus(task, "not_started");
     }
+  }
+
+  function startTaskRename(task: TaskNode) {
+    setTaskContextMenu(undefined);
+    setTaskMenuId(undefined);
+    setEditingTaskId(task.id);
+    setEditingTaskTitle(task.title);
+  }
+
+  function cancelTaskRename() {
+    setEditingTaskId(undefined);
+    setEditingTaskTitle("");
+  }
+
+  async function saveTaskRename(task: TaskNode) {
+    const title = editingTaskTitle.trim();
+
+    if (!title || title === task.title || !onRenameTask || isReadOnly) {
+      cancelTaskRename();
+      return;
+    }
+
+    await onRenameTask(projectId, task.id, title);
+    cancelTaskRename();
+  }
+
+  async function handleDeleteTaskNode(task: TaskNode) {
+    if (!onDeleteTask || isReadOnly) {
+      return;
+    }
+
+    const message = task.children.length > 0
+      ? "确定要删除这个任务吗？它会被物理删除，且下级任务也会一并删除。"
+      : "确定要删除这个任务吗？它会被物理删除。";
+    const shouldDelete = window.confirm(message);
+
+    if (!shouldDelete) {
+      return;
+    }
+
+    await onDeleteTask(projectId, task.id);
+    setTaskContextMenu(undefined);
+    setTaskMenuId(undefined);
   }
 
   function renderWeeklyCandidateActions(task: TaskNode) {
@@ -367,6 +420,9 @@ export function ProjectDetail({
     const hideTaskAddForm = Boolean(
       isWeeklyProject && ((weeklyPickTask && weeklyPickTask.id === task.id) || isWeeklyCandidateChild)
     );
+    const showTaskMenu = Boolean(!isReadOnly && task.id !== rootTask?.id);
+    const isTaskMenuOpen = taskMenuId === task.id;
+    const taskCheckboxId = `task-checkbox-${task.id}`;
 
     return (
       <li className={`task-node depth-${depth}`} key={task.id}>
@@ -381,18 +437,79 @@ export function ProjectDetail({
           }}
         >
           <div className="todo-line">
-            <label className={`todo-check${isChecked ? " checked" : ""}${!canToggleCheckbox ? " disabled" : ""}`}>
+            <div className="todo-primary">
+              <label
+                className={`todo-check${isChecked ? " checked" : ""}${!canToggleCheckbox ? " disabled" : ""}`}
+                htmlFor={taskCheckboxId}
+              >
                 <input
+                  id={taskCheckboxId}
                   aria-label={task.title}
                   checked={isChecked}
                   disabled={!canToggleCheckbox}
                   type="checkbox"
-                onChange={(event) => void handleTaskCheckbox(task, event.target.checked)}
-              />
-              <span className="todo-title">{task.title}</span>
-            </label>
+                  onChange={(event) => void handleTaskCheckbox(task, event.target.checked)}
+                />
+              </label>
+              {editingTaskId === task.id ? (
+                <input
+                  className="task-rename-input"
+                  type="text"
+                  aria-label={`重命名任务：${task.title}`}
+                  value={editingTaskTitle}
+                  autoFocus
+                  onClick={(event) => event.stopPropagation()}
+                  onChange={(event) => setEditingTaskTitle(event.target.value)}
+                  onBlur={() => {
+                    void saveTaskRename(task);
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      void saveTaskRename(task);
+                    }
+
+                    if (event.key === "Escape") {
+                      event.preventDefault();
+                      cancelTaskRename();
+                    }
+                  }}
+                />
+              ) : (
+                <label className="todo-title task-title-label" htmlFor={taskCheckboxId}>
+                  {task.title}
+                </label>
+              )}
+            </div>
 
             <div className="todo-meta">
+              {showTaskMenu ? (
+                <div className="task-row-actions">
+                  <button
+                    className="task-row-menu-toggle"
+                    type="button"
+                    aria-expanded={isTaskMenuOpen}
+                    aria-label={`任务更多操作：${task.title}`}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      setTaskContextMenu(undefined);
+                      setTaskMenuId((current) => (current === task.id ? undefined : task.id));
+                    }}
+                  >
+                    更多
+                  </button>
+                  {isTaskMenuOpen ? (
+                    <div className="task-row-menu">
+                      <button type="button" onClick={() => startTaskRename(task)}>
+                        重命名
+                      </button>
+                      <button type="button" onClick={() => void handleDeleteTaskNode(task)}>
+                        删除
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
               {isWeeklyCandidateChild ? (
                 <span className={`task-status status-${task.status}`}>{weeklyCandidateStatusLabel(task.status)}</span>
               ) : progress.total > 0 ? (

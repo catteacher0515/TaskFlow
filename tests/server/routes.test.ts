@@ -178,6 +178,26 @@ describe("Express API routes", () => {
     ]);
   });
 
+  it("renames a project and persists the updated title", async () => {
+    const { app, rootDir } = await makeFixture(["project-1"]);
+    await request(app)
+      .post("/api/projects")
+      .send({ templateId: "generic-task", title: "抖音视频发布字段填写", recurrence: { kind: "none" } })
+      .expect(201);
+
+    const response = await request(app)
+      .patch("/api/projects/project-1/title")
+      .send({ title: "发布平台视频字段统计" })
+      .expect(200);
+
+    expect(response.body.projects[0].title).toBe("发布平台视频字段统计");
+
+    const storedProject = JSON.parse(
+      await readFile(path.join(dataDir(rootDir), "projects", "project-1.json"), "utf8")
+    ) as { title: string };
+    expect(storedProject.title).toBe("发布平台视频字段统计");
+  });
+
   it("adds and transitions generic task tree children", async () => {
     const { app } = await makeFixture(["project-1", "task-1", "activity-1", "activity-2"]);
     await request(app)
@@ -214,6 +234,34 @@ describe("Express API routes", () => {
       .expect(200);
     expect(revisedResponse.body.projects[0].taskTree.children[0].status).toBe("completed");
     expect(revisedResponse.body.activity).toHaveLength(1);
+  });
+
+  it("renames and deletes a non-root task", async () => {
+    const { app } = await makeFixture(["project-1", "task-1"]);
+    await request(app)
+      .post("/api/projects")
+      .send({ templateId: "generic-task", title: "整理播客选题", recurrence: { kind: "none" } })
+      .expect(201);
+    await request(app)
+      .post("/api/projects/project-1/tasks/project-1-root/children")
+      .send({ title: "收集候选选题" })
+      .expect(200);
+
+    const renamedResponse = await request(app)
+      .patch("/api/projects/project-1/tasks/task-1/title")
+      .send({ title: "确认推荐仓库名单" })
+      .expect(200);
+
+    expect(renamedResponse.body.projects[0].taskTree.children[0]).toMatchObject({
+      id: "task-1",
+      title: "确认推荐仓库名单"
+    });
+
+    const deletedResponse = await request(app)
+      .delete("/api/projects/project-1/tasks/task-1")
+      .expect(200);
+
+    expect(deletedResponse.body.projects[0].taskTree.children).toEqual([]);
   });
 
   it("revokes task feedback when a closed task is restored to not started", async () => {

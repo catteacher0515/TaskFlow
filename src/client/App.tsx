@@ -11,6 +11,9 @@ import {
   reopenProjectApi,
   selectFocusProjectApi,
   transitionProgressObjectApi,
+  deleteTaskApi,
+  updateProjectTitleApi,
+  updateTaskTitleApi,
   updateTaskStatusApi,
   updateProjectStatusApi
 } from "./api";
@@ -109,6 +112,12 @@ export function App() {
     return runMutation(() => updateProjectStatusApi(projectId, status));
   }
 
+  function handleUpdateProjectTitle(projectId: string, title: string) {
+    return runMutation(() => updateProjectTitleApi(projectId, title), {
+      preferredProjectId: projectId
+    });
+  }
+
   function handleReopenProject(projectId: string) {
     return runMutation(() => reopenProjectApi(projectId));
   }
@@ -194,6 +203,18 @@ export function App() {
     return runMutation(() => updateTaskStatusApi(projectId, taskId, status));
   }
 
+  function handleUpdateTaskTitle(projectId: string, taskId: string, title: string) {
+    return runMutation(() => updateTaskTitleApi(projectId, taskId, title), {
+      preferredProjectId: projectId
+    });
+  }
+
+  function handleDeleteTask(projectId: string, taskId: string) {
+    return runMutation(() => deleteTaskApi(projectId, taskId), {
+      preferredProjectId: projectId
+    });
+  }
+
   function handleSelectFocusProject(input: {
     projectId: string;
     selectedActionId?: string;
@@ -252,6 +273,7 @@ export function App() {
               projects={visibleProjects}
               selectedProjectId={selectedProject?.id}
               onSelectProject={setSelectedProjectId}
+              onRenameProject={handleUpdateProjectTitle}
             />
           </aside>
 
@@ -265,6 +287,8 @@ export function App() {
             onHideProject={handleHideProject}
             onAddTaskChild={handleAddTaskChild}
             onUpdateTaskStatus={handleUpdateTaskStatus}
+            onRenameTask={handleUpdateTaskTitle}
+            onDeleteTask={handleDeleteTask}
             isReadOnly={isSelectedProjectReadOnly}
             readOnlyMessage={isSelectedProjectReadOnly ? "收束模式下该项目只读" : undefined}
           />

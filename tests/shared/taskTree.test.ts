@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   addTaskChild,
+  deleteTask,
+  renameTask,
   transitionTask,
   type AddTaskChildInput,
   type TransitionTaskInput
@@ -168,5 +170,44 @@ describe("task tree", () => {
     });
     expect(task?.feedbackRecordedAt).toBeUndefined();
     expect(task?.feedbackStatus).toBeUndefined();
+  });
+
+  it("renames a non-root task", () => {
+    const project = renameTask(addChild(), {
+      taskId: "task-1",
+      title: "确认推荐仓库名单",
+      now: "2026-06-16T08:20:00.000Z"
+    });
+
+    expect(project.taskTree?.children[0]).toMatchObject({
+      id: "task-1",
+      title: "确认推荐仓库名单"
+    });
+  });
+
+  it("deletes a non-root task subtree", () => {
+    let project = addChild();
+    project = addTaskChild(project, {
+      id: "task-1-1",
+      parentTaskId: "task-1",
+      title: "翻收藏",
+      now: "2026-06-16T08:06:00.000Z"
+    });
+
+    const updatedProject = deleteTask(project, {
+      taskId: "task-1",
+      now: "2026-06-16T08:20:00.000Z"
+    });
+
+    expect(updatedProject.taskTree?.children).toEqual([]);
+  });
+
+  it("rejects deleting the root task", () => {
+    expect(() =>
+      deleteTask(addChild(), {
+        taskId: "project-1-root",
+        now: "2026-06-16T08:20:00.000Z"
+      })
+    ).toThrow("Cannot delete root task");
   });
 });
