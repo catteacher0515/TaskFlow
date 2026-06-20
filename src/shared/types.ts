@@ -44,6 +44,20 @@ export interface HabitRecord {
   updatedAt: string;
 }
 
+export interface EmotionOption {
+  emoji: string;
+  label: string;
+}
+
+export interface EmotionEntry {
+  date: string;
+  emoji: string;
+  shortNote?: string;
+  detail?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Settings {
   dataVersion: 1;
   activeProjectLimit: number;
@@ -213,6 +227,7 @@ export interface AppState {
   projects: Project[];
   habits: Habit[];
   habitRecords: HabitRecord[];
+  emotionEntries: EmotionEntry[];
   activity: ActivityEntry[];
   warnings: Warning[];
   focusMode: FocusModeState;
