@@ -167,6 +167,7 @@ const appState: AppState = {
   ],
   habits: [],
   habitRecords: [],
+  emotionEntries: [],
   activity: [
     {
       id: "activity-1",

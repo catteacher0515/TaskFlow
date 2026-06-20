@@ -40,6 +40,7 @@ export async function fetchState(): Promise<AppState> {
     ...state,
     habits: Array.isArray(state.habits) ? state.habits : [],
     habitRecords: Array.isArray(state.habitRecords) ? state.habitRecords : [],
+    emotionEntries: Array.isArray(state.emotionEntries) ? state.emotionEntries : [],
     activity: Array.isArray(state.activity) ? state.activity : [],
     warnings: Array.isArray(state.warnings) ? state.warnings : [],
     focusMode: state.focusMode ?? { status: "inactive" }

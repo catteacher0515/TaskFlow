@@ -79,6 +79,7 @@ export async function readState(rootDir: string): Promise<AppState> {
     projects: projects.map(normalizeProject),
     habits,
     habitRecords,
+    emotionEntries: [],
     activity,
     warnings: [],
     focusMode

@@ -1,6 +1,6 @@
 import type { EmotionOption } from "./types";
 
-export const emotionOptions: EmotionOption[] = [
+export const emotionOptions: ReadonlyArray<EmotionOption> = [
   { emoji: "😭", label: "很差" },
   { emoji: "😞", label: "低落" },
   { emoji: "😐", label: "平平" },
