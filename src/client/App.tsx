@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   addTaskChildApi,
+  archiveHabitApi,
+  completeHabitApi,
+  createHabitApi,
   createProgressObject,
   createProjectApi,
   exitFocusModeApi,
@@ -8,6 +11,7 @@ import {
   fetchState,
   hideProjectApi,
   revokeActivityApi,
+  updateHabitApi,
   reopenProjectApi,
   selectFocusProjectApi,
   transitionProgressObjectApi,
@@ -20,20 +24,22 @@ import {
 import { CurrentPanel } from "./components/CurrentPanel";
 import { FeedbackPage } from "./components/FeedbackPage";
 import { FocusModePanel } from "./components/FocusModePanel";
+import { HabitsPage } from "./components/HabitsPage";
 import { NewProjectPanel } from "./components/NewProjectPanel";
 import { ParallelLimitGate } from "./components/ParallelLimitGate";
 import { ProjectDetail } from "./components/ProjectDetail";
 import { ProjectList } from "./components/ProjectList";
 import { TemplateManager } from "./components/TemplateManager";
 import "./styles.css";
-import type { AppState, ProjectStatus, TaskNodeStatus } from "../shared/types";
+import type { AppState, HabitPeriod, ProjectStatus, TaskNodeStatus } from "../shared/types";
 import { hasParallelLimitGate } from "../shared/parallelLimitGate";
 
-type AppView = "workbench" | "new" | "templates" | "feedback";
+type AppView = "workbench" | "new" | "templates" | "feedback" | "habits";
 
 const navItems: Array<{ id: AppView; label: string }> = [
   { id: "workbench", label: "工作台" },
   { id: "new", label: "新建任务" },
+  { id: "habits", label: "习惯" },
   { id: "templates", label: "模板" },
   { id: "feedback", label: "反馈" }
 ];
@@ -178,6 +184,38 @@ export function App() {
     }
   }
 
+  function handleCreateHabit(input: {
+    title: string;
+    schedule: { weekdays: number[] };
+    period: HabitPeriod;
+  }) {
+    return runMutation(() => createHabitApi(input), {
+      nextView: "habits"
+    });
+  }
+
+  function handleCompleteHabit(habitId: string, date: string) {
+    return runMutation(() => completeHabitApi(habitId, date), {
+      nextView: "habits"
+    });
+  }
+
+  function handleArchiveHabit(habitId: string) {
+    return runMutation(() => archiveHabitApi(habitId), {
+      nextView: "habits"
+    });
+  }
+
+  function handleUpdateHabit(habitId: string, input: {
+    title: string;
+    schedule: { weekdays: number[] };
+    period: HabitPeriod;
+  }) {
+    return runMutation(() => updateHabitApi(habitId, input), {
+      nextView: "habits"
+    });
+  }
+
   function handleCreateProgressObject(projectId: string, title: string, fields: Record<string, string>) {
     return runMutation(() => createProgressObject(projectId, { title, fields }));
   }
@@ -320,6 +358,18 @@ export function App() {
             selectedProjectId={selectedProjectId}
             onRevokeActivity={handleRevokeActivity}
             onRevokeActivities={handleRevokeActivities}
+          />
+        </div>
+      ) : null}
+
+      {state && view === "habits" ? (
+        <div className="single-layout">
+          <HabitsPage
+            state={state}
+            onCreateHabit={handleCreateHabit}
+            onCompleteHabit={handleCompleteHabit}
+            onArchiveHabit={handleArchiveHabit}
+            onUpdateHabit={handleUpdateHabit}
           />
         </div>
       ) : null}

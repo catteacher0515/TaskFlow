@@ -12,6 +12,38 @@ export type ActivityType =
 export type FocusSessionResult = "recorded" | "continued" | "blocked";
 export type TaskNodeStatus = "not_started" | "active" | "completed" | "dropped" | "unhandled";
 
+export interface HabitSchedule {
+  weekdays: number[];
+}
+
+export type HabitPeriod =
+  | {
+      kind: "ongoing";
+      startDate: string;
+    }
+  | {
+      kind: "bounded";
+      startDate: string;
+      endDate: string;
+    };
+
+export interface Habit {
+  id: string;
+  title: string;
+  schedule: HabitSchedule;
+  period: HabitPeriod;
+  archivedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface HabitRecord {
+  habitId: string;
+  date: string;
+  status: "completed";
+  updatedAt: string;
+}
+
 export interface Settings {
   dataVersion: 1;
   activeProjectLimit: number;
@@ -179,6 +211,8 @@ export interface AppState {
   settings: Settings;
   templates: Template[];
   projects: Project[];
+  habits: Habit[];
+  habitRecords: HabitRecord[];
   activity: ActivityEntry[];
   warnings: Warning[];
   focusMode: FocusModeState;

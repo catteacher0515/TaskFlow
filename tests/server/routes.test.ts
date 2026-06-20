@@ -57,8 +57,140 @@ describe("Express API routes", () => {
       expect.arrayContaining(["generic-task", "weekly-github-picks"])
     );
     expect(response.body.projects).toEqual([]);
+    expect(response.body.habits).toEqual([]);
+    expect(response.body.habitRecords).toEqual([]);
     expect(response.body.activity).toEqual([]);
     expect(response.body.warnings).toEqual([]);
+  });
+
+  it("returns habits and habitRecords from api state", async () => {
+    const { app, rootDir } = await makeFixture();
+    const rootDataDir = dataDir(rootDir);
+
+    await writeFile(
+      path.join(rootDataDir, "habits.json"),
+      JSON.stringify(
+        [
+          {
+            id: "habit-1",
+            title: "看 AI HOT 日报",
+            schedule: { weekdays: [1, 2, 3, 4, 5] },
+            period: { kind: "bounded", startDate: "2026-06-19", endDate: "2026-07-19" },
+            createdAt: "2026-06-19T10:00:00.000Z",
+            updatedAt: "2026-06-19T10:00:00.000Z"
+          }
+        ],
+        null,
+        2
+      ),
+      "utf8"
+    );
+
+    await writeFile(
+      path.join(rootDataDir, "habit-records.json"),
+      JSON.stringify(
+        [
+          {
+            habitId: "habit-1",
+            date: "2026-06-19",
+            status: "completed",
+            updatedAt: "2026-06-19T21:00:00.000Z"
+          }
+        ],
+        null,
+        2
+      ),
+      "utf8"
+    );
+
+    const response = await request(app).get("/api/state").expect(200);
+
+    expect(response.body.habits).toHaveLength(1);
+    expect(response.body.habitRecords).toHaveLength(1);
+  });
+
+  it("creates a habit", async () => {
+    const { app } = await makeFixture(["habit-1"]);
+
+    const response = await request(app)
+      .post("/api/habits")
+      .send({
+        title: "看 AI HOT 日报",
+        schedule: { weekdays: [1, 2, 3, 4, 5] },
+        period: { kind: "bounded", startDate: "2026-06-19", endDate: "2026-07-19" }
+      })
+      .expect(200);
+
+    expect(response.body.habits[0].title).toBe("看 AI HOT 日报");
+  });
+
+  it("marks a habit date as completed", async () => {
+    const { app } = await makeFixture(["habit-1"]);
+    await request(app)
+      .post("/api/habits")
+      .send({
+        title: "看 AI HOT 日报",
+        schedule: { weekdays: [1, 2, 3, 4, 5] },
+        period: { kind: "bounded", startDate: "2026-06-19", endDate: "2026-07-19" }
+      })
+      .expect(200);
+
+    const response = await request(app)
+      .put("/api/habits/habit-1/records/2026-06-19")
+      .send({ status: "completed" })
+      .expect(200);
+
+    expect(response.body.habitRecords).toContainEqual(
+      expect.objectContaining({ habitId: "habit-1", date: "2026-06-19", status: "completed" })
+    );
+  });
+
+  it("archives a habit", async () => {
+    const { app } = await makeFixture(["habit-1"]);
+    await request(app)
+      .post("/api/habits")
+      .send({
+        title: "爬坡",
+        schedule: { weekdays: [0, 6] },
+        period: { kind: "ongoing", startDate: "2026-06-19" }
+      })
+      .expect(200);
+
+    const response = await request(app)
+      .post("/api/habits/habit-1/archive")
+      .expect(200);
+
+    expect(response.body.habits[0].archivedAt).toBeTruthy();
+  });
+
+  it("updates a habit", async () => {
+    const { app } = await makeFixture(["habit-1"]);
+    await request(app)
+      .post("/api/habits")
+      .send({
+        title: "看 AI HOT 日报",
+        schedule: { weekdays: [1, 2, 3, 4, 5] },
+        period: { kind: "bounded", startDate: "2026-06-19", endDate: "2026-07-19" }
+      })
+      .expect(200);
+
+    const response = await request(app)
+      .patch("/api/habits/habit-1")
+      .send({
+        title: "看 AI HOT + Hacker News",
+        schedule: { weekdays: [1, 3, 5] },
+        period: { kind: "ongoing", startDate: "2026-06-20" }
+      })
+      .expect(200);
+
+    expect(response.body.habits).toContainEqual(
+      expect.objectContaining({
+        id: "habit-1",
+        title: "看 AI HOT + Hacker News",
+        schedule: { weekdays: [1, 3, 5] },
+        period: { kind: "ongoing", startDate: "2026-06-20" }
+      })
+    );
   });
 
   it("serves the built client index when a static client bundle is present", async () => {
@@ -462,7 +594,7 @@ describe("Express API routes", () => {
   });
 
   it("reopens a completed project to the status it had before completion", async () => {
-    const { app } = await makeFixture();
+    const { app } = await makeFixture(["project-1", "activity-project-complete", "activity-project-revoke"]);
     await request(app)
       .post("/api/projects")
       .send({ templateId: "weekly-github-picks", title: "Project 1", recurrence: { kind: "weekly" } })
@@ -477,6 +609,15 @@ describe("Express API routes", () => {
       status: "completed",
       completedFromStatus: "active"
     });
+    expect(completedResponse.body.activity).toContainEqual(
+      expect.objectContaining({
+        id: "activity-project-complete",
+        projectId: "project-1",
+        kind: "big",
+        type: "project_completed",
+        message: "项目完成：Project 1"
+      })
+    );
 
     const reopenedResponse = await request(app)
       .post("/api/projects/project-1/reopen")
@@ -485,6 +626,7 @@ describe("Express API routes", () => {
 
     expect(reopenedResponse.body.projects[0].status).toBe("active");
     expect(reopenedResponse.body.projects[0].completedFromStatus).toBeUndefined();
+    expect(reopenedResponse.body.activity).toEqual([]);
   });
 
   it("reopens an abandoned project to the status it had before abandonment", async () => {

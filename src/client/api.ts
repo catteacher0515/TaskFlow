@@ -1,6 +1,7 @@
 import type {
   AppState,
   FocusSessionResult,
+  HabitPeriod,
   Project,
   ProjectStatus,
   RecurrenceRule,
@@ -32,8 +33,53 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   return response.json() as Promise<T>;
 }
 
-export function fetchState(): Promise<AppState> {
-  return request<AppState>("/api/state");
+export async function fetchState(): Promise<AppState> {
+  const state = await request<Partial<AppState>>("/api/state");
+
+  return {
+    ...state,
+    habits: Array.isArray(state.habits) ? state.habits : [],
+    habitRecords: Array.isArray(state.habitRecords) ? state.habitRecords : [],
+    activity: Array.isArray(state.activity) ? state.activity : [],
+    warnings: Array.isArray(state.warnings) ? state.warnings : [],
+    focusMode: state.focusMode ?? { status: "inactive" }
+  } as AppState;
+}
+
+export function createHabitApi(payload: {
+  title: string;
+  schedule: { weekdays: number[] };
+  period: HabitPeriod;
+}): Promise<AppState> {
+  return request<AppState>("/api/habits", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export function completeHabitApi(habitId: string, date: string): Promise<AppState> {
+  return request<AppState>(`/api/habits/${habitId}/records/${date}`, {
+    method: "PUT",
+    body: JSON.stringify({ status: "completed" })
+  });
+}
+
+export function archiveHabitApi(habitId: string): Promise<AppState> {
+  return request<AppState>(`/api/habits/${habitId}/archive`, {
+    method: "POST",
+    body: JSON.stringify({})
+  });
+}
+
+export function updateHabitApi(habitId: string, payload: {
+  title: string;
+  schedule: { weekdays: number[] };
+  period: HabitPeriod;
+}): Promise<AppState> {
+  return request<AppState>(`/api/habits/${habitId}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload)
+  });
 }
 
 export interface CreateProjectPayload {

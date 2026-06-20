@@ -14,6 +14,9 @@ import type {
   ActivityEntry,
   AppState,
   FocusSessionResult,
+  Habit,
+  HabitPeriod,
+  HabitRecord,
   Project,
   ProjectStatus,
   RecurrenceRule,
@@ -24,6 +27,8 @@ import { evaluateWarnings } from "../shared/warnings";
 import {
   appendActivity,
   readState,
+  writeHabitRecords,
+  writeHabits,
   writeFocusMode,
   writeProject,
   writeTemplate
@@ -67,6 +72,82 @@ export function registerRoutes(app: Express, deps: RouteDeps) {
     res.status(201).json({ project, state: await readStateWithWarnings(deps) });
   }));
 
+  app.post("/api/habits", asyncRoute(async (req, res) => {
+    const state = await readStateWithWarnings(deps);
+    const title = parseRequiredString(req.body.title, "Habit title is required");
+    const schedule = parseHabitSchedule(req.body.schedule);
+    const period = parseHabitPeriod(req.body.period);
+    const now = deps.now();
+    const nextHabit: Habit = {
+      id: deps.id(),
+      title,
+      schedule,
+      period,
+      createdAt: now,
+      updatedAt: now
+    };
+
+    await writeHabits(deps.rootDir, [...state.habits, nextHabit]);
+    res.json(await readStateWithWarnings(deps));
+  }));
+
+  app.put("/api/habits/:habitId/records/:date", asyncRoute(async (req, res) => {
+    const state = await readStateWithWarnings(deps);
+    const now = deps.now();
+    const date = parseHabitDate(req.params.date);
+    const remaining = state.habitRecords.filter(
+      (record) => !(record.habitId === req.params.habitId && record.date === date)
+    );
+    const nextRecord: HabitRecord = {
+      habitId: req.params.habitId,
+      date,
+      status: "completed",
+      updatedAt: now
+    };
+
+    await writeHabitRecords(deps.rootDir, [...remaining, nextRecord]);
+    res.json(await readStateWithWarnings(deps));
+  }));
+
+  app.post("/api/habits/:habitId/archive", asyncRoute(async (req, res) => {
+    const state = await readStateWithWarnings(deps);
+    const now = deps.now();
+    const nextHabits = state.habits.map((habit) =>
+      habit.id === req.params.habitId ? { ...habit, archivedAt: now, updatedAt: now } : habit
+    );
+
+    await writeHabits(deps.rootDir, nextHabits);
+    res.json(await readStateWithWarnings(deps));
+  }));
+
+  app.patch("/api/habits/:habitId", asyncRoute(async (req, res) => {
+    const state = await readStateWithWarnings(deps);
+    const habit = state.habits.find((item) => item.id === req.params.habitId);
+
+    if (!habit) {
+      throw new HttpError(404, "Unknown habit");
+    }
+
+    const title = parseRequiredString(req.body.title, "Habit title is required");
+    const schedule = parseHabitSchedule(req.body.schedule);
+    const period = parseHabitPeriod(req.body.period);
+    const now = deps.now();
+    const nextHabits = state.habits.map((item) =>
+      item.id === req.params.habitId
+        ? {
+            ...item,
+            title,
+            schedule,
+            period,
+            updatedAt: now
+          }
+        : item
+    );
+
+    await writeHabits(deps.rootDir, nextHabits);
+    res.json(await readStateWithWarnings(deps));
+  }));
+
   app.put("/api/templates/:templateId", asyncRoute(async (req, res) => {
     const template = req.body as Template;
 
@@ -80,8 +161,28 @@ export function registerRoutes(app: Express, deps: RouteDeps) {
 
   app.patch("/api/projects/:projectId/status", asyncRoute(async (req, res) => {
     const status = parseProjectStatus(req.body.status);
+    const state = await readStateWithWarnings(deps);
+    const project = requireProject(state, req.params.projectId);
+    assertCanMutate(state, req.params.projectId);
+    const now = deps.now();
+    const nextProject = setProjectStatus(project, status, now);
 
-    await mutateProject(deps, req.params.projectId, (project) => setProjectStatus(project, status, deps.now()));
+    await writeProject(deps.rootDir, nextProject);
+
+    if (project.status !== "completed" && status === "completed") {
+      await appendActivity(deps.rootDir, {
+        id: deps.id(),
+        projectId: req.params.projectId,
+        kind: "big",
+        type: "project_completed",
+        message: `项目完成：${nextProject.title}`,
+        createdAt: now
+      });
+    }
+
+    if (shouldExitFocusModeAfterProjectMutation(state, nextProject)) {
+      await writeFocusMode(deps.rootDir, exitFocusMode());
+    }
 
     res.json(await readStateWithWarnings(deps));
   }));
@@ -107,7 +208,32 @@ export function registerRoutes(app: Express, deps: RouteDeps) {
   }));
 
   app.post("/api/projects/:projectId/reopen", asyncRoute(async (req, res) => {
-    await mutateProject(deps, req.params.projectId, (project) => reopenProject(project, deps.now()));
+    const state = await readStateWithWarnings(deps);
+    const project = requireProject(state, req.params.projectId);
+    assertCanMutate(state, req.params.projectId);
+    const now = deps.now();
+    const nextProject = reopenProject(project, now);
+
+    await writeProject(deps.rootDir, nextProject);
+
+    if (project.status === "completed") {
+      const revokedActivity = findEffectiveProjectCompletionFeedback(state.activity, req.params.projectId);
+      if (revokedActivity) {
+        await appendActivity(deps.rootDir, {
+          id: deps.id(),
+          projectId: req.params.projectId,
+          kind: revokedActivity.kind,
+          type: "feedback_revoked",
+          message: `反馈撤销：${revokedActivity.message}`,
+          revokedActivityId: revokedActivity.id,
+          createdAt: now
+        });
+      }
+    }
+
+    if (shouldExitFocusModeAfterProjectMutation(state, nextProject)) {
+      await writeFocusMode(deps.rootDir, exitFocusMode());
+    }
 
     res.json(await readStateWithWarnings(deps));
   }));
@@ -361,6 +487,12 @@ function findEffectiveTaskFeedback(activity: ActivityEntry[], taskId: string): A
     .find((entry) => entry.taskId === taskId && (entry.type === "task_completed" || entry.type === "entropy_reduced"));
 }
 
+function findEffectiveProjectCompletionFeedback(activity: ActivityEntry[], projectId: string): ActivityEntry | undefined {
+  return [...activity]
+    .reverse()
+    .find((entry) => entry.projectId === projectId && entry.type === "project_completed");
+}
+
 function findEffectiveActivity(activity: ActivityEntry[], activityId: string): ActivityEntry | undefined {
   return activity.find((entry) => entry.id === activityId);
 }
@@ -409,6 +541,58 @@ function parseTaskNodeStatus(value: unknown): TaskNodeStatus {
   }
 
   throw new HttpError(400, "Invalid task status");
+}
+
+function parseHabitSchedule(value: unknown) {
+  if (!value || typeof value !== "object" || !Array.isArray((value as { weekdays?: unknown }).weekdays)) {
+    throw new HttpError(400, "Habit schedule is required");
+  }
+
+  const weekdays = (value as { weekdays: unknown[] }).weekdays;
+  if (weekdays.length === 0 || weekdays.some((weekday) => typeof weekday !== "number" || weekday < 0 || weekday > 6)) {
+    throw new HttpError(400, "Habit weekdays must be integers between 0 and 6");
+  }
+
+  return { weekdays: weekdays as number[] };
+}
+
+function parseHabitPeriod(value: unknown): HabitPeriod {
+  if (!value || typeof value !== "object" || typeof (value as { kind?: unknown }).kind !== "string") {
+    throw new HttpError(400, "Habit period is required");
+  }
+
+  const kind = (value as { kind: string }).kind;
+  if (kind === "ongoing") {
+    return {
+      kind: "ongoing",
+      startDate: parseHabitDate((value as { startDate?: unknown }).startDate)
+    };
+  }
+
+  if (kind === "bounded") {
+    const startDate = parseHabitDate((value as { startDate?: unknown }).startDate);
+    const endDate = parseHabitDate((value as { endDate?: unknown }).endDate);
+
+    if (endDate < startDate) {
+      throw new HttpError(400, "Habit end date cannot be earlier than start date");
+    }
+
+    return {
+      kind: "bounded",
+      startDate,
+      endDate
+    };
+  }
+
+  throw new HttpError(400, "Habit period kind is invalid");
+}
+
+function parseHabitDate(value: unknown) {
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    throw new HttpError(400, "Habit date must use YYYY-MM-DD format");
+  }
+
+  return value;
 }
 
 function parseRequiredString(value: unknown, message: string): string {

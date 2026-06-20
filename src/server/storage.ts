@@ -1,6 +1,15 @@
 import { appendFile, mkdir, readFile, readdir, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
-import type { ActivityEntry, AppState, FocusModeState, Project, Settings, Template } from "../shared/types";
+import type {
+  ActivityEntry,
+  AppState,
+  FocusModeState,
+  Habit,
+  HabitRecord,
+  Project,
+  Settings,
+  Template
+} from "../shared/types";
 import { genericTaskTemplate } from "../shared/genericTaskTemplate";
 import { createRootTask } from "../shared/taskTree";
 import { weeklyGithubTemplate } from "../shared/weeklyGithubTemplate";
@@ -29,6 +38,8 @@ export async function initializeDataDir(rootDir: string) {
   await mkdir(projectsDir, { recursive: true });
   await writeIfMissing(path.join(rootDataDir, "settings.json"), defaultSettings);
   await writeIfMissing(path.join(rootDataDir, "focus-mode.json"), defaultFocusMode);
+  await writeIfMissing(path.join(rootDataDir, "habits.json"), []);
+  await writeIfMissing(path.join(rootDataDir, "habit-records.json"), []);
   await writeIfMissing(path.join(templatesDir, `${genericTaskTemplate.id}.json`), genericTaskTemplate);
   await writeIfMissing(path.join(templatesDir, `${weeklyGithubTemplate.id}.json`), weeklyGithubTemplate);
   await writeIfMissing(path.join(projectsDir, ".gitkeep"), "");
@@ -52,11 +63,13 @@ export async function readState(rootDir: string): Promise<AppState> {
   await initializeDataDir(rootDir);
 
   const rootDataDir = dataDir(rootDir);
-  const [settings, focusMode, templates, projects, activity] = await Promise.all([
+  const [settings, focusMode, templates, projects, habits, habitRecords, activity] = await Promise.all([
     readJsonFile<Settings>(path.join(rootDataDir, "settings.json")),
     readJsonFile<FocusModeState>(path.join(rootDataDir, "focus-mode.json")),
     readAllJsonFiles<Template>(path.join(rootDataDir, "templates")),
     readAllJsonFiles<Project>(path.join(rootDataDir, "projects")),
+    readJsonFile<Habit[]>(path.join(rootDataDir, "habits.json")),
+    readJsonFile<HabitRecord[]>(path.join(rootDataDir, "habit-records.json")),
     readActivity(path.join(rootDataDir, "activity-log.jsonl"))
   ]);
 
@@ -64,6 +77,8 @@ export async function readState(rootDir: string): Promise<AppState> {
     settings,
     templates: templates.map(normalizeTemplate),
     projects: projects.map(normalizeProject),
+    habits,
+    habitRecords,
     activity,
     warnings: [],
     focusMode
@@ -88,6 +103,16 @@ export async function writeSettings(rootDir: string, settings: Settings) {
 export async function writeFocusMode(rootDir: string, focusMode: FocusModeState) {
   await initializeDataDir(rootDir);
   await writeJsonFile(path.join(dataDir(rootDir), "focus-mode.json"), focusMode);
+}
+
+export async function writeHabits(rootDir: string, habits: Habit[]) {
+  await initializeDataDir(rootDir);
+  await writeJsonFile(path.join(dataDir(rootDir), "habits.json"), habits);
+}
+
+export async function writeHabitRecords(rootDir: string, records: HabitRecord[]) {
+  await initializeDataDir(rootDir);
+  await writeJsonFile(path.join(dataDir(rootDir), "habit-records.json"), records);
 }
 
 export async function appendActivity(rootDir: string, activity: ActivityEntry) {

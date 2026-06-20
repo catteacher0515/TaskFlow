@@ -165,6 +165,8 @@ const appState: AppState = {
       updatedAt: "2026-06-15T00:00:00.000Z"
     }
   ],
+  habits: [],
+  habitRecords: [],
   activity: [
     {
       id: "activity-1",
@@ -241,6 +243,10 @@ describe("App", () => {
     const month = String(localDate.getMonth() + 1).padStart(2, "0");
     const day = String(localDate.getDate()).padStart(2, "0");
     return `${year}-${month}-${day}`;
+  }
+
+  function buildRelativeWeekday(daysOffset: number) {
+    return new Date(`${buildRelativeDateInput(daysOffset)}T12:00:00`).getDay();
   }
 
   function buildDayGroupLabel(daysOffset: number, count: number) {
@@ -364,6 +370,240 @@ describe("App", () => {
     expect(screen.getByText("模板管理")).toBeInTheDocument();
     expect(screen.getByText("每周 GitHub 精选")).toBeInTheDocument();
     expect(screen.getByText("推进对象：候选仓库")).toBeInTheDocument();
+  });
+
+  it("shows a habits page from the main navigation", async () => {
+    const user = userEvent.setup();
+
+    render(<App />);
+
+    await user.click(await screen.findByRole("button", { name: "习惯" }));
+
+    expect(screen.getByRole("heading", { name: "习惯" })).toBeInTheDocument();
+    expect(screen.getByText("今天该做")).toBeInTheDocument();
+    expect(screen.getByText("历史漏项")).toBeInTheDocument();
+  });
+
+  it("shows today due habits and missed habit items", async () => {
+    const user = userEvent.setup();
+    mockState({
+      ...appState,
+      habits: [
+        {
+          id: "habit-1",
+          title: "看 AI HOT 日报",
+          schedule: { weekdays: [buildRelativeWeekday(-1), buildRelativeWeekday(0)] },
+          period: {
+            kind: "bounded",
+            startDate: buildRelativeDateInput(-1),
+            endDate: buildRelativeDateInput(0)
+          },
+          createdAt: buildRelativeCreatedAt(-1),
+          updatedAt: buildRelativeCreatedAt(-1)
+        }
+      ],
+      habitRecords: []
+    });
+
+    render(<App />);
+
+    await user.click(await screen.findByRole("button", { name: "习惯" }));
+
+    expect(screen.getAllByText("看 AI HOT 日报")).toHaveLength(2);
+    expect(screen.getByRole("button", { name: "标记完成" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "补记完成" })).toBeInTheDocument();
+  });
+
+  it("completes a habit from today view and archives it from all habits", async () => {
+    const user = userEvent.setup();
+    const todayDate = buildRelativeDateInput(0);
+    const initialState: AppState = {
+      ...appState,
+      habits: [
+        {
+          id: "habit-1",
+          title: "看 AI HOT 日报",
+          schedule: { weekdays: [buildRelativeWeekday(0)] },
+          period: {
+            kind: "bounded",
+            startDate: todayDate,
+            endDate: buildRelativeDateInput(7)
+          },
+          createdAt: buildRelativeCreatedAt(0),
+          updatedAt: buildRelativeCreatedAt(0)
+        }
+      ],
+      habitRecords: []
+    };
+    const completedState: AppState = {
+      ...initialState,
+      habitRecords: [
+        {
+          habitId: "habit-1",
+          date: todayDate,
+          status: "completed",
+          updatedAt: buildRelativeCreatedAt(0)
+        }
+      ]
+    };
+    const archivedState: AppState = {
+      ...completedState,
+      habits: completedState.habits.map((habit) => ({
+        ...habit,
+        archivedAt: buildRelativeCreatedAt(0),
+        updatedAt: buildRelativeCreatedAt(0)
+      }))
+    };
+
+    globalThis.fetch = vi.fn(async (input, init) => {
+      const path = String(input);
+      if (path === "/api/state") {
+        return jsonResponse(initialState);
+      }
+      if (path === `/api/habits/habit-1/records/${todayDate}`) {
+        expect(init).toMatchObject({
+          method: "PUT",
+          body: JSON.stringify({ status: "completed" })
+        });
+        return jsonResponse(completedState);
+      }
+      if (path === "/api/habits/habit-1/archive") {
+        expect(init).toMatchObject({
+          method: "POST",
+          body: JSON.stringify({})
+        });
+        return jsonResponse(archivedState);
+      }
+      return jsonResponse(initialState);
+    });
+
+    render(<App />);
+
+    await user.click(await screen.findByRole("button", { name: "习惯" }));
+    await user.click(screen.getByRole("button", { name: "标记完成" }));
+    expect(await screen.findByRole("button", { name: "已完成" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "全部习惯" }));
+    await user.click(screen.getByRole("button", { name: "归档：看 AI HOT 日报" }));
+
+    expect(await screen.findByText("暂无习惯")).toBeInTheDocument();
+    expect(screen.getByText("看 AI HOT 日报")).toBeInTheDocument();
+  });
+
+  it("creates a habit from the all habits view", async () => {
+    const user = userEvent.setup();
+    const initialState: AppState = {
+      ...appState,
+      habits: [],
+      habitRecords: []
+    };
+    const createdState: AppState = {
+      ...initialState,
+      habits: [
+        {
+          id: "habit-1",
+          title: "爬坡",
+          schedule: { weekdays: [1, 2, 3, 4, 5] },
+          period: {
+            kind: "bounded",
+            startDate: buildRelativeDateInput(0),
+            endDate: buildRelativeDateInput(0)
+          },
+          createdAt: buildRelativeCreatedAt(0),
+          updatedAt: buildRelativeCreatedAt(0)
+        }
+      ]
+    };
+
+    globalThis.fetch = vi.fn(async (input, init) => {
+      const path = String(input);
+      if (path === "/api/state") {
+        return jsonResponse(initialState);
+      }
+      if (path === "/api/habits") {
+        expect(init).toMatchObject({
+          method: "POST"
+        });
+        return jsonResponse(createdState);
+      }
+      return jsonResponse(initialState);
+    });
+
+    render(<App />);
+
+    await user.click(await screen.findByRole("button", { name: "习惯" }));
+    await user.click(screen.getByRole("button", { name: "全部习惯" }));
+    await user.type(screen.getByLabelText("习惯名称"), "爬坡");
+    await user.click(screen.getByRole("button", { name: "新建习惯" }));
+
+    expect(await screen.findByText("爬坡")).toBeInTheDocument();
+  });
+
+  it("edits a habit from the all habits view", async () => {
+    const user = userEvent.setup();
+    const initialState: AppState = {
+      ...appState,
+      habits: [
+        {
+          id: "habit-1",
+          title: "看 AI HOT 日报",
+          schedule: { weekdays: [1, 2, 3, 4, 5] },
+          period: {
+            kind: "bounded",
+            startDate: buildRelativeDateInput(0),
+            endDate: buildRelativeDateInput(5)
+          },
+          createdAt: buildRelativeCreatedAt(0),
+          updatedAt: buildRelativeCreatedAt(0)
+        }
+      ],
+      habitRecords: []
+    };
+    const updatedState: AppState = {
+      ...initialState,
+      habits: [
+        {
+          ...initialState.habits[0],
+          title: "看 AI HOT + Hacker News",
+          schedule: { weekdays: [1, 3, 5] },
+          period: {
+            kind: "ongoing",
+            startDate: buildRelativeDateInput(1)
+          },
+          updatedAt: buildRelativeCreatedAt(1)
+        }
+      ]
+    };
+
+    globalThis.fetch = vi.fn(async (input, init) => {
+      const path = String(input);
+      if (path === "/api/state") {
+        return jsonResponse(initialState);
+      }
+      if (path === "/api/habits/habit-1") {
+        expect(init).toMatchObject({
+          method: "PATCH"
+        });
+        return jsonResponse(updatedState);
+      }
+      return jsonResponse(initialState);
+    });
+
+    render(<App />);
+
+    await user.click(await screen.findByRole("button", { name: "习惯" }));
+    await user.click(screen.getByRole("button", { name: "全部习惯" }));
+    await user.click(screen.getByRole("button", { name: "编辑：看 AI HOT 日报" }));
+
+    const titleInput = screen.getByRole("textbox", { name: "习惯名称" });
+    await user.clear(titleInput);
+    await user.type(titleInput, "看 AI HOT + Hacker News");
+    await user.click(screen.getByRole("radio", { name: "长期进行" }));
+    await user.clear(screen.getByLabelText("习惯开始日期"));
+    await user.type(screen.getByLabelText("习惯开始日期"), buildRelativeDateInput(1));
+    await user.click(screen.getByRole("button", { name: "保存习惯" }));
+
+    expect(await screen.findByText("看 AI HOT + Hacker News")).toBeInTheDocument();
   });
 
   it("groups projects by status and collapses completed projects by default", async () => {
@@ -1562,6 +1802,65 @@ describe("App", () => {
       })
     );
     expect(await screen.findByRole("button", { name: "暂停项目" })).toBeInTheDocument();
+  });
+
+  it("records project completion in feedback and removes it after reopening", async () => {
+    const user = userEvent.setup();
+    const completedProject = {
+      ...appState.projects[0],
+      status: "completed" as const,
+      completedFromStatus: "active" as const
+    };
+    const completedState: AppState = {
+      ...replaceProject(completedProject),
+      activity: [
+        ...appState.activity,
+        {
+          id: "activity-project-complete",
+          projectId: "project-1",
+          kind: "big",
+          type: "project_completed",
+          message: "项目完成：每周 GitHub 精选 2026-W25",
+          createdAt: "2026-06-15T10:00:00.000Z"
+        }
+      ]
+    };
+    const reopenedState: AppState = replaceProject({
+      ...appState.projects[0],
+      status: "active" as const,
+      completedFromStatus: undefined
+    });
+
+    globalThis.fetch = vi.fn(async (input, init) => {
+      const path = String(input);
+      if (path === "/api/state") {
+        return jsonResponse(appState);
+      }
+      if (path === "/api/projects/project-1/status") {
+        expect(init).toMatchObject({
+          method: "PATCH",
+          body: JSON.stringify({ status: "completed" })
+        });
+        return jsonResponse(completedState);
+      }
+      if (path === "/api/projects/project-1/reopen") {
+        expect(init).toMatchObject({
+          method: "POST",
+          body: JSON.stringify({})
+        });
+        return jsonResponse(reopenedState);
+      }
+      return jsonResponse(appState);
+    });
+
+    render(<App />);
+
+    await user.click(await screen.findByRole("button", { name: "标记完成" }));
+    expect(await screen.findByText("项目完成：每周 GitHub 精选 2026-W25")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "恢复为进行中" }));
+    expect(await screen.findByText("完成本周精选初稿")).toBeInTheDocument();
+    expect(screen.queryByText("项目完成：每周 GitHub 精选 2026-W25")).not.toBeInTheDocument();
   });
 
   it("does not hide a project when the user cancels the confirmation", async () => {
