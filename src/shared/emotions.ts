@@ -24,6 +24,13 @@ export interface EmotionCalendarView {
   weeks: EmotionCalendarDay[][];
 }
 
+function formatLocalDate(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 export function buildEmotionCalendarView(input: {
   entries: EmotionEntry[];
   month: string;
@@ -40,7 +47,7 @@ export function buildEmotionCalendarView(input: {
     for (let dayIndex = 0; dayIndex < 7; dayIndex += 1) {
       const current = new Date(start);
       current.setDate(start.getDate() + weekIndex * 7 + dayIndex);
-      const date = current.toISOString().slice(0, 10);
+      const date = formatLocalDate(current);
       const entry = byDate.get(date);
 
       week.push({
