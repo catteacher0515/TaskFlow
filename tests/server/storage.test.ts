@@ -52,6 +52,48 @@ describe("local file storage", () => {
     expect(await readFile(path.join(dataDir(root), "activity-log.jsonl"), "utf8")).toBe("");
   });
 
+  it("initializes default emotion entry storage in app state", async () => {
+    const root = await makeRoot();
+
+    await initializeDataDir(root);
+    const state = await readState(root);
+
+    expect(state.emotionEntries).toEqual([]);
+    expect(await readFile(path.join(dataDir(root), "emotion-entries.json"), "utf8")).toBe("[\n]\n");
+  });
+
+  it("reads persisted emotion entries from local storage", async () => {
+    const root = await makeRoot();
+    await initializeDataDir(root);
+    await writeFile(
+      path.join(dataDir(root), "emotion-entries.json"),
+      JSON.stringify(
+        [
+          {
+            date: "2026-06-20",
+            emoji: "🙂",
+            shortNote: "缓过来了",
+            createdAt: "2026-06-20T14:00:00.000Z",
+            updatedAt: "2026-06-20T14:00:00.000Z"
+          }
+        ],
+        null,
+        2
+      ),
+      "utf8"
+    );
+
+    const state = await readState(root);
+
+    expect(state.emotionEntries).toContainEqual(
+      expect.objectContaining({
+        date: "2026-06-20",
+        emoji: "🙂",
+        shortNote: "缓过来了"
+      })
+    );
+  });
+
   it("uses DATA_DIR when provided", async () => {
     const root = await makeRoot();
     process.env.DATA_DIR = path.join(root, "runtime-data");

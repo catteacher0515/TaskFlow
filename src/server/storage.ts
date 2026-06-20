@@ -3,6 +3,7 @@ import path from "node:path";
 import type {
   ActivityEntry,
   AppState,
+  EmotionEntry,
   FocusModeState,
   Habit,
   HabitRecord,
@@ -40,6 +41,7 @@ export async function initializeDataDir(rootDir: string) {
   await writeIfMissing(path.join(rootDataDir, "focus-mode.json"), defaultFocusMode);
   await writeIfMissing(path.join(rootDataDir, "habits.json"), []);
   await writeIfMissing(path.join(rootDataDir, "habit-records.json"), []);
+  await writeIfMissing(path.join(rootDataDir, "emotion-entries.json"), []);
   await writeIfMissing(path.join(templatesDir, `${genericTaskTemplate.id}.json`), genericTaskTemplate);
   await writeIfMissing(path.join(templatesDir, `${weeklyGithubTemplate.id}.json`), weeklyGithubTemplate);
   await writeIfMissing(path.join(projectsDir, ".gitkeep"), "");
@@ -63,13 +65,14 @@ export async function readState(rootDir: string): Promise<AppState> {
   await initializeDataDir(rootDir);
 
   const rootDataDir = dataDir(rootDir);
-  const [settings, focusMode, templates, projects, habits, habitRecords, activity] = await Promise.all([
+  const [settings, focusMode, templates, projects, habits, habitRecords, emotionEntries, activity] = await Promise.all([
     readJsonFile<Settings>(path.join(rootDataDir, "settings.json")),
     readJsonFile<FocusModeState>(path.join(rootDataDir, "focus-mode.json")),
     readAllJsonFiles<Template>(path.join(rootDataDir, "templates")),
     readAllJsonFiles<Project>(path.join(rootDataDir, "projects")),
     readJsonFile<Habit[]>(path.join(rootDataDir, "habits.json")),
     readJsonFile<HabitRecord[]>(path.join(rootDataDir, "habit-records.json")),
+    readJsonFile<EmotionEntry[]>(path.join(rootDataDir, "emotion-entries.json")),
     readActivity(path.join(rootDataDir, "activity-log.jsonl"))
   ]);
 
@@ -79,7 +82,7 @@ export async function readState(rootDir: string): Promise<AppState> {
     projects: projects.map(normalizeProject),
     habits,
     habitRecords,
-    emotionEntries: [],
+    emotionEntries,
     activity,
     warnings: [],
     focusMode
@@ -114,6 +117,11 @@ export async function writeHabits(rootDir: string, habits: Habit[]) {
 export async function writeHabitRecords(rootDir: string, records: HabitRecord[]) {
   await initializeDataDir(rootDir);
   await writeJsonFile(path.join(dataDir(rootDir), "habit-records.json"), records);
+}
+
+export async function writeEmotionEntries(rootDir: string, entries: EmotionEntry[]) {
+  await initializeDataDir(rootDir);
+  await writeJsonFile(path.join(dataDir(rootDir), "emotion-entries.json"), entries);
 }
 
 export async function appendActivity(rootDir: string, activity: ActivityEntry) {
@@ -212,12 +220,12 @@ async function writeJsonFile(filePath: string, value: unknown) {
   await mkdir(path.dirname(filePath), { recursive: true });
   const tempPath = path.join(path.dirname(filePath), `.${path.basename(filePath)}.${process.pid}.${Date.now()}.tmp`);
 
-  await writeFile(tempPath, `${JSON.stringify(value, null, 2)}\n`, "utf8");
+  await writeFile(tempPath, formatJsonFileContent(value), "utf8");
   await rename(tempPath, filePath);
 }
 
 async function writeIfMissing(filePath: string, value: unknown) {
-  const content = typeof value === "string" ? value : `${JSON.stringify(value, null, 2)}\n`;
+  const content = typeof value === "string" ? value : formatJsonFileContent(value);
 
   try {
     await writeFile(filePath, content, { encoding: "utf8", flag: "wx" });
@@ -231,4 +239,12 @@ async function writeIfMissing(filePath: string, value: unknown) {
 
 function isFileExistsError(error: unknown): error is NodeJS.ErrnoException {
   return error instanceof Error && "code" in error && error.code === "EEXIST";
+}
+
+function formatJsonFileContent(value: unknown) {
+  if (Array.isArray(value) && value.length === 0) {
+    return "[\n]\n";
+  }
+
+  return `${JSON.stringify(value, null, 2)}\n`;
 }
