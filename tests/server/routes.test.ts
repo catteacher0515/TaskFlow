@@ -272,6 +272,79 @@ describe("Express API routes", () => {
     });
   });
 
+  it("accepts a leap-day emotion entry on 2024-02-29", async () => {
+    const { app } = await makeFixture();
+
+    const response = await request(app)
+      .put("/api/emotions/2024-02-29")
+      .send({
+        emoji: "😄",
+        shortNote: "今天顺了",
+        detail: "闰日也要记一下"
+      })
+      .expect(200);
+
+    expect(response.body.emotionEntries).toContainEqual(
+      expect.objectContaining({
+        date: "2024-02-29",
+        emoji: "😄",
+        shortNote: "今天顺了",
+        detail: "闰日也要记一下"
+      })
+    );
+  });
+
+  it("accepts a low-year emotion entry on 0001-01-01", async () => {
+    const { app } = await makeFixture();
+
+    const response = await request(app)
+      .put("/api/emotions/0001-01-01")
+      .send({
+        emoji: "🙂",
+        shortNote: "低年份测试",
+        detail: "确保不会被错误拒绝"
+      })
+      .expect(200);
+
+    expect(response.body.emotionEntries).toContainEqual(
+      expect.objectContaining({
+        date: "0001-01-01",
+        emoji: "🙂",
+        shortNote: "低年份测试",
+        detail: "确保不会被错误拒绝"
+      })
+    );
+  });
+
+  it("keeps an emotion entry when shortNote and detail are cleared to empty", async () => {
+    const { app } = await makeFixture();
+    await request(app)
+      .put("/api/emotions/2026-06-20")
+      .send({
+        emoji: "😄",
+        shortNote: "晚上缓过来了",
+        detail: "最后还是有收尾"
+      })
+      .expect(200);
+
+    const response = await request(app)
+      .put("/api/emotions/2026-06-20")
+      .send({
+        emoji: "🙂",
+        shortNote: "   ",
+        detail: ""
+      })
+      .expect(200);
+
+    expect(response.body.emotionEntries).toHaveLength(1);
+    expect(response.body.emotionEntries[0]).toMatchObject({
+      date: "2026-06-20",
+      emoji: "🙂"
+    });
+    expect(response.body.emotionEntries[0].shortNote).toBeUndefined();
+    expect(response.body.emotionEntries[0].detail).toBeUndefined();
+  });
+
   it("rejects an emotion entry with an invalid date format", async () => {
     const { app } = await makeFixture();
 
