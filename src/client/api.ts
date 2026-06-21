@@ -86,7 +86,7 @@ export function updateHabitApi(habitId: string, payload: {
 
 export function upsertEmotionEntryApi(
   date: string,
-  payload: { emoji: string; shortNote?: string; detail?: string }
+  payload: { emoji: string; shortNote: string; detail: string }
 ): Promise<AppState> {
   return request<AppState>(`/api/emotions/${date}`, {
     method: "PUT",
