@@ -566,6 +566,10 @@ describe("App", () => {
     expect(screen.getByRole("button", { name: "展开详细内容" })).toHaveAttribute("aria-expanded", "false");
     expect(screen.queryByRole("textbox", { name: "详细内容" })).not.toBeInTheDocument();
     expect(screen.getByRole("textbox", { name: "一句话总结" })).toHaveValue("");
+
+    await user.click(screen.getByRole("button", { name: "展开详细内容" }));
+
+    expect(screen.getByRole("textbox", { name: "详细内容" })).toHaveValue("");
   });
 
   it("hydrates the editor when selecting a day with an existing entry", async () => {
@@ -597,17 +601,24 @@ describe("App", () => {
     render(<App />);
 
     await user.click(await screen.findByRole("button", { name: "情绪" }));
+    const happyRadio = screen.getByRole("radio", { name: "😄 开心" });
+    const neutralRadio = screen.getByRole("radio", { name: "😐 平平" });
 
     await user.clear(screen.getByRole("textbox", { name: "一句话总结" }));
     await user.type(screen.getByRole("textbox", { name: "一句话总结" }), "临时草稿");
     await user.clear(screen.getByRole("textbox", { name: "详细内容" }));
     await user.type(screen.getByRole("textbox", { name: "详细内容" }), "临时详情");
+    expect(happyRadio).toBeChecked();
+    expect(neutralRadio).not.toBeChecked();
 
-    fireEvent.change(screen.getByLabelText("情绪日期"), { target: { value: yesterday } });
+    await user.click(screen.getByRole("button", { name: "列表" }));
+    await user.click(screen.getByRole("button", { name: `${yesterday} 😐 昨天一般` }));
 
     expect(screen.getByRole("textbox", { name: "一句话总结" })).toHaveValue("昨天一般");
     expect(screen.getByRole("button", { name: "收起详细内容" })).toHaveAttribute("aria-expanded", "true");
     expect(screen.getByRole("textbox", { name: "详细内容" })).toHaveValue("开会太多，节奏被打断");
+    expect(neutralRadio).toBeChecked();
+    expect(happyRadio).not.toBeChecked();
   });
 
   it("exposes simple pressed and expanded semantics on the emotions page", async () => {
