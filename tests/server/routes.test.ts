@@ -109,6 +109,34 @@ describe("Express API routes", () => {
     expect(response.body.habitRecords).toHaveLength(1);
   });
 
+  it("returns emotion entries from api state", async () => {
+    const { app, rootDir } = await makeFixture();
+    const rootDataDir = dataDir(rootDir);
+
+    await writeFile(
+      path.join(rootDataDir, "emotion-entries.json"),
+      JSON.stringify(
+        [
+          {
+            date: "2026-06-20",
+            emoji: "😄",
+            shortNote: "今天顺了",
+            detail: "下午明显轻松很多",
+            createdAt: "2026-06-20T12:00:00.000Z",
+            updatedAt: "2026-06-20T12:00:00.000Z"
+          }
+        ],
+        null,
+        2
+      ),
+      "utf8"
+    );
+
+    const response = await request(app).get("/api/state").expect(200);
+
+    expect(response.body.emotionEntries).toHaveLength(1);
+  });
+
   it("creates a habit", async () => {
     const { app } = await makeFixture(["habit-1"]);
 
@@ -191,6 +219,57 @@ describe("Express API routes", () => {
         period: { kind: "ongoing", startDate: "2026-06-20" }
       })
     );
+  });
+
+  it("creates an emotion entry for an unrecorded date", async () => {
+    const { app } = await makeFixture();
+
+    const response = await request(app)
+      .put("/api/emotions/2026-06-20")
+      .send({
+        emoji: "🙂",
+        shortNote: "状态稳住了",
+        detail: "虽然还没完全解决，但没有昨天慌"
+      })
+      .expect(200);
+
+    expect(response.body.emotionEntries).toContainEqual(
+      expect.objectContaining({
+        date: "2026-06-20",
+        emoji: "🙂",
+        shortNote: "状态稳住了",
+        detail: "虽然还没完全解决，但没有昨天慌"
+      })
+    );
+  });
+
+  it("updates an existing emotion entry instead of creating a second one", async () => {
+    const { app } = await makeFixture();
+    await request(app)
+      .put("/api/emotions/2026-06-20")
+      .send({
+        emoji: "😞",
+        shortNote: "早上很卡",
+        detail: ""
+      })
+      .expect(200);
+
+    const response = await request(app)
+      .put("/api/emotions/2026-06-20")
+      .send({
+        emoji: "😄",
+        shortNote: "晚上缓过来了",
+        detail: "最后还是有收尾"
+      })
+      .expect(200);
+
+    expect(response.body.emotionEntries).toHaveLength(1);
+    expect(response.body.emotionEntries[0]).toMatchObject({
+      date: "2026-06-20",
+      emoji: "😄",
+      shortNote: "晚上缓过来了",
+      detail: "最后还是有收尾"
+    });
   });
 
   it("serves the built client index when a static client bundle is present", async () => {

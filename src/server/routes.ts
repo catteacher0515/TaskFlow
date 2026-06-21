@@ -7,6 +7,7 @@ import {
 } from "../shared/progress";
 import { addTaskChild, deleteTask, renameTask, transitionTask } from "../shared/taskTree";
 import { canMutateProject, completeFocusSession, exitFocusMode, selectFocusProject } from "../shared/focusMode";
+import { emotionOptions } from "../shared/emotions";
 import { hasParallelLimitGate } from "../shared/parallelLimitGate";
 import { createProjectFromTemplate } from "../shared/projectFactory";
 import { hideProject, reopenProject, setProjectStatus } from "../shared/projectStatus";
@@ -27,6 +28,7 @@ import { evaluateWarnings } from "../shared/warnings";
 import {
   appendActivity,
   readState,
+  writeEmotionEntries,
   writeHabitRecords,
   writeHabits,
   writeFocusMode,
@@ -106,6 +108,40 @@ export function registerRoutes(app: Express, deps: RouteDeps) {
     };
 
     await writeHabitRecords(deps.rootDir, [...remaining, nextRecord]);
+    res.json(await readStateWithWarnings(deps));
+  }));
+
+  app.put("/api/emotions/:date", asyncRoute(async (req, res) => {
+    const state = await readStateWithWarnings(deps);
+    const date = parseEmotionDate(req.params.date);
+    const emoji = parseEmotionEmoji(req.body.emoji);
+    const shortNote = parseOptionalString(req.body.shortNote);
+    const detail = parseOptionalString(req.body.detail);
+    const now = deps.now();
+    const existing = state.emotionEntries.find((entry) => entry.date === date);
+    const nextEntry = existing
+      ? {
+          ...existing,
+          emoji,
+          shortNote,
+          detail,
+          updatedAt: now
+        }
+      : {
+          date,
+          emoji,
+          shortNote,
+          detail,
+          createdAt: now,
+          updatedAt: now
+        };
+    const remaining = state.emotionEntries.filter((entry) => entry.date !== date);
+
+    await writeEmotionEntries(
+      deps.rootDir,
+      [...remaining, nextEntry].sort((left, right) => left.date.localeCompare(right.date))
+    );
+
     res.json(await readStateWithWarnings(deps));
   }));
 
@@ -593,6 +629,31 @@ function parseHabitDate(value: unknown) {
   }
 
   return value;
+}
+
+function parseEmotionDate(value: unknown) {
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    throw new HttpError(400, "Emotion date must use YYYY-MM-DD format");
+  }
+
+  return value;
+}
+
+function parseEmotionEmoji(value: unknown) {
+  if (typeof value !== "string" || !emotionOptions.some((item) => item.emoji === value)) {
+    throw new HttpError(400, "Emotion emoji is invalid");
+  }
+
+  return value;
+}
+
+function parseOptionalString(value: unknown) {
+  if (typeof value !== "string") {
+    return undefined;
+  }
+
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
 }
 
 function parseRequiredString(value: unknown, message: string): string {
