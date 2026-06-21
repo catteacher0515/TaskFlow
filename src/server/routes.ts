@@ -636,6 +636,17 @@ function parseEmotionDate(value: unknown) {
     throw new HttpError(400, "Emotion date must use YYYY-MM-DD format");
   }
 
+  const [year, month, day] = value.split("-").map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+
+  if (
+    date.getUTCFullYear() !== year ||
+    date.getUTCMonth() !== month - 1 ||
+    date.getUTCDate() !== day
+  ) {
+    throw new HttpError(400, "Emotion date must be a real calendar date");
+  }
+
   return value;
 }
 
@@ -648,8 +659,12 @@ function parseEmotionEmoji(value: unknown) {
 }
 
 function parseOptionalString(value: unknown) {
-  if (typeof value !== "string") {
+  if (value === undefined) {
     return undefined;
+  }
+
+  if (typeof value !== "string") {
+    throw new HttpError(400, "Emotion note fields must be strings when provided");
   }
 
   const trimmed = value.trim();

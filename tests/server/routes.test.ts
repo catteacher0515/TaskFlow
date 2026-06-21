@@ -272,6 +272,81 @@ describe("Express API routes", () => {
     });
   });
 
+  it("rejects an emotion entry with an invalid date format", async () => {
+    const { app } = await makeFixture();
+
+    const response = await request(app)
+      .put("/api/emotions/2026-6-20")
+      .send({
+        emoji: "🙂",
+        shortNote: "状态稳住了",
+        detail: "今天比昨天好一点"
+      })
+      .expect(400);
+
+    expect(response.body.error).toBe("Emotion date must use YYYY-MM-DD format");
+  });
+
+  it("rejects an emotion entry with a non-existent calendar date", async () => {
+    const { app } = await makeFixture();
+
+    const response = await request(app)
+      .put("/api/emotions/2026-02-31")
+      .send({
+        emoji: "🙂",
+        shortNote: "状态稳住了",
+        detail: "今天比昨天好一点"
+      })
+      .expect(400);
+
+    expect(response.body.error).toBe("Emotion date must be a real calendar date");
+  });
+
+  it("rejects an emotion entry with an invalid emoji", async () => {
+    const { app } = await makeFixture();
+
+    const response = await request(app)
+      .put("/api/emotions/2026-06-20")
+      .send({
+        emoji: "😀",
+        shortNote: "状态稳住了",
+        detail: "今天比昨天好一点"
+      })
+      .expect(400);
+
+    expect(response.body.error).toBe("Emotion emoji is invalid");
+  });
+
+  it("rejects an emotion entry when shortNote is not a string", async () => {
+    const { app } = await makeFixture();
+
+    const response = await request(app)
+      .put("/api/emotions/2026-06-20")
+      .send({
+        emoji: "🙂",
+        shortNote: 123,
+        detail: "今天比昨天好一点"
+      })
+      .expect(400);
+
+    expect(response.body.error).toBe("Emotion note fields must be strings when provided");
+  });
+
+  it("rejects an emotion entry when detail is not a string", async () => {
+    const { app } = await makeFixture();
+
+    const response = await request(app)
+      .put("/api/emotions/2026-06-20")
+      .send({
+        emoji: "🙂",
+        shortNote: "状态稳住了",
+        detail: { text: "今天比昨天好一点" }
+      })
+      .expect(400);
+
+    expect(response.body.error).toBe("Emotion note fields must be strings when provided");
+  });
+
   it("serves the built client index when a static client bundle is present", async () => {
     const rootDir = await mkdtemp(path.join(tmpdir(), "taskflow-static-"));
     roots.push(rootDir);
