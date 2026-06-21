@@ -464,9 +464,9 @@ describe("App", () => {
     const calendarButton = screen.getByRole("button", { name: "月历" });
     expect(calendarButton).toHaveAttribute("aria-pressed", "true");
 
-    const calendarGrid = screen.getByRole("grid", { name: "情绪月历" });
-    expect(within(calendarGrid).getByText("😄")).toBeInTheDocument();
-    expect(within(calendarGrid).queryByText("今天顺了")).not.toBeInTheDocument();
+    const calendarGroup = screen.getByRole("group", { name: "情绪月历" });
+    expect(within(calendarGroup).getByText("😄")).toBeInTheDocument();
+    expect(within(calendarGroup).queryByText("今天顺了")).not.toBeInTheDocument();
   });
 
   it("shows emoji plus short note in list view and falls back to emoji only", async () => {
@@ -518,6 +518,24 @@ describe("App", () => {
     expect(shortNoteInput).toHaveValue("还没写完的草稿");
   });
 
+  it("keeps the detail draft when changing the viewed month", async () => {
+    const user = userEvent.setup();
+
+    render(<App />);
+
+    await user.click(await screen.findByRole("button", { name: "情绪" }));
+    await user.click(screen.getByRole("button", { name: "展开详细内容" }));
+
+    const detailInput = screen.getByRole("textbox", { name: "详细内容" });
+    await user.type(detailInput, "还没写完的详细草稿");
+
+    const monthInput = screen.getByLabelText("查看月份");
+    fireEvent.change(monthInput, { target: { value: buildRelativeDateInput(-31).slice(0, 7) } });
+
+    expect(monthInput).toHaveValue(buildRelativeDateInput(-31).slice(0, 7));
+    expect(detailInput).toHaveValue("还没写完的详细草稿");
+  });
+
   it("exposes simple pressed and expanded semantics on the emotions page", async () => {
     const user = userEvent.setup();
     const today = buildRelativeDateInput(0);
@@ -545,9 +563,10 @@ describe("App", () => {
 
     await user.click(await screen.findByRole("button", { name: "情绪" }));
 
-    const calendarGrid = screen.getByRole("grid", { name: "情绪月历" });
-    expect(within(calendarGrid).getByRole("button", { name: `${today} 😄` })).toHaveAttribute("aria-pressed", "true");
-    expect(within(calendarGrid).queryByRole("gridcell")).not.toBeInTheDocument();
+    const calendarGroup = screen.getByRole("group", { name: "情绪月历" });
+    expect(within(calendarGroup).getByRole("button", { name: `${today} 😄` })).toHaveAttribute("aria-pressed", "true");
+    expect(within(calendarGroup).queryByRole("row")).not.toBeInTheDocument();
+    expect(within(calendarGroup).queryByRole("gridcell")).not.toBeInTheDocument();
 
     const detailToggle = screen.getByRole("button", { name: "展开详细内容" });
     expect(detailToggle).toHaveAttribute("aria-expanded", "false");

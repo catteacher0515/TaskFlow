@@ -26,10 +26,6 @@ function buildTodayDate() {
   return `${year}-${month}-${day}`;
 }
 
-function buildMonthStart(month: string) {
-  return `${month}-01`;
-}
-
 function isMonthValue(value: string) {
   return /^\d{4}-\d{2}$/.test(value);
 }
@@ -156,14 +152,14 @@ export function EmotionsPage({
       </div>
 
       {viewMode === "calendar" ? (
-        <div className="emotion-calendar" role="grid" aria-label="情绪月历">
+        <div className="emotion-calendar" role="group" aria-label="情绪月历">
           <div className="emotion-weekdays" aria-hidden="true">
             {["日", "一", "二", "三", "四", "五", "六"].map((label) => (
               <span key={label}>{label}</span>
             ))}
           </div>
           {calendarView.weeks.map((week, weekIndex) => (
-            <div className="emotion-calendar-row" role="row" key={`${calendarView.month}-${weekIndex}`}>
+            <div className="emotion-calendar-row" key={`${calendarView.month}-${weekIndex}`}>
               {week.map((day) => (
                 <button
                   key={day.date}
@@ -254,7 +250,6 @@ export function EmotionsPage({
             type="button"
             className="secondary-action compact"
             aria-expanded={detailExpanded}
-            aria-controls="emotion-detail-field"
             onClick={() => setDetailExpanded((current) => !current)}
           >
             {detailExpanded ? "收起详细内容" : "展开详细内容"}
@@ -265,7 +260,6 @@ export function EmotionsPage({
           <label>
             <span>详细内容</span>
             <textarea
-              id="emotion-detail-field"
               aria-label="详细内容"
               rows={5}
               value={detail}
