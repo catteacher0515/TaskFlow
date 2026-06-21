@@ -35,12 +35,13 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
 
 export async function fetchState(): Promise<AppState> {
   const state = await request<Partial<AppState>>("/api/state");
+  const emotionEntries = Array.isArray(state.emotionEntries) ? state.emotionEntries : [];
 
   return {
     ...state,
     habits: Array.isArray(state.habits) ? state.habits : [],
     habitRecords: Array.isArray(state.habitRecords) ? state.habitRecords : [],
-    emotionEntries: Array.isArray(state.emotionEntries) ? state.emotionEntries : [],
+    emotionEntries,
     activity: Array.isArray(state.activity) ? state.activity : [],
     warnings: Array.isArray(state.warnings) ? state.warnings : [],
     focusMode: state.focusMode ?? { status: "inactive" }
@@ -79,6 +80,16 @@ export function updateHabitApi(habitId: string, payload: {
 }): Promise<AppState> {
   return request<AppState>(`/api/habits/${habitId}`, {
     method: "PATCH",
+    body: JSON.stringify(payload)
+  });
+}
+
+export function upsertEmotionEntryApi(
+  date: string,
+  payload: { emoji: string; shortNote?: string; detail?: string }
+): Promise<AppState> {
+  return request<AppState>(`/api/emotions/${date}`, {
+    method: "PUT",
     body: JSON.stringify(payload)
   });
 }

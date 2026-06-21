@@ -333,6 +333,22 @@ describe("App", () => {
     expect(screen.getByRole("heading", { name: "选择一个项目" })).toBeInTheDocument();
   });
 
+  it("keeps loading the app when api state omits emotionEntries", async () => {
+    globalThis.fetch = vi.fn(async () => {
+      const { emotionEntries: _emotionEntries, ...stateWithoutEmotionEntries } = appState;
+      return jsonResponse(stateWithoutEmotionEntries);
+    });
+
+    render(<App />);
+
+    expect(await screen.findByText("当前面板")).toBeInTheDocument();
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(fetch).toHaveBeenCalledWith("/api/state", {
+      headers: { "Content-Type": "application/json" }
+    });
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
   it("shows templates on the dedicated templates page instead of the workbench", async () => {
     const user = userEvent.setup();
     mockState({
