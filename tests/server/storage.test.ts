@@ -13,6 +13,7 @@ import {
   readJsonFile,
   readState,
   writeFocusMode,
+  writeEmotionEntries,
   writeProject
 } from "../../src/server/storage";
 
@@ -65,23 +66,15 @@ describe("local file storage", () => {
   it("reads persisted emotion entries from local storage", async () => {
     const root = await makeRoot();
     await initializeDataDir(root);
-    await writeFile(
-      path.join(dataDir(root), "emotion-entries.json"),
-      JSON.stringify(
-        [
-          {
-            date: "2026-06-20",
-            emoji: "🙂",
-            shortNote: "缓过来了",
-            createdAt: "2026-06-20T14:00:00.000Z",
-            updatedAt: "2026-06-20T14:00:00.000Z"
-          }
-        ],
-        null,
-        2
-      ),
-      "utf8"
-    );
+    await writeEmotionEntries(root, [
+      {
+        date: "2026-06-20",
+        emoji: "🙂",
+        shortNote: "缓过来了",
+        createdAt: "2026-06-20T14:00:00.000Z",
+        updatedAt: "2026-06-20T14:00:00.000Z"
+      }
+    ]);
 
     const state = await readState(root);
 
