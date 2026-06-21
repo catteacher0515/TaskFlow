@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -378,63 +378,73 @@ describe("App", () => {
   });
 
   it("saves the selected day's emotion entry from the UI and reflects it in list view", async () => {
-    const user = userEvent.setup();
-    const today = buildRelativeDateInput(0);
-    const payload = {
-      emoji: "🙂",
-      shortNote: "把提交链路补上了",
-      detail: "从页面触发保存，并在列表里确认回显"
-    };
-    const savedState: AppState = {
-      ...appState,
-      emotionEntries: [
-        {
-          date: today,
-          ...payload,
-          createdAt: buildRelativeCreatedAt(0),
-          updatedAt: buildRelativeCreatedAt(0)
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-06-21T12:00:00.000Z"));
+
+    try {
+      const selectedDate = buildRelativeDateInput(-1);
+      const payload = {
+        emoji: "🙂",
+        shortNote: "把提交链路补上了",
+        detail: "从页面触发保存，并在列表里确认回显"
+      };
+      const savedState: AppState = {
+        ...appState,
+        emotionEntries: [
+          {
+            date: selectedDate,
+            ...payload,
+            createdAt: buildRelativeCreatedAt(-1),
+            updatedAt: buildRelativeCreatedAt(-1)
+          }
+        ]
+      };
+
+      globalThis.fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const path = typeof input === "string" ? input : input.toString();
+
+        if (path === "/api/state") {
+          return jsonResponse(appState);
         }
-      ]
-    };
 
-    globalThis.fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-      const path = typeof input === "string" ? input : input.toString();
+        if (path === `/api/emotions/${selectedDate}`) {
+          return jsonResponse(savedState);
+        }
 
-      if (path === "/api/state") {
-        return jsonResponse(appState);
-      }
+        throw new Error(`Unexpected request: ${path}`);
+      });
 
-      if (path === `/api/emotions/${today}`) {
-        return jsonResponse(savedState);
-      }
+      render(<App />);
+      await act(async () => {
+        await vi.runAllTimersAsync();
+      });
+      vi.useRealTimers();
+      const user = userEvent.setup();
 
-      throw new Error(`Unexpected request: ${path}`);
-    });
+      await user.click(screen.getByRole("button", { name: "情绪" }));
+      fireEvent.change(screen.getByLabelText("情绪日期"), { target: { value: selectedDate } });
+      await user.click(screen.getByRole("radio", { name: "🙂 还行" }));
+      await user.type(screen.getByRole("textbox", { name: "一句话总结" }), payload.shortNote);
+      await user.click(screen.getByRole("button", { name: "展开详细内容" }));
+      await user.type(screen.getByRole("textbox", { name: "详细内容" }), payload.detail);
+      await user.click(screen.getByRole("button", { name: "保存这一天" }));
 
-    render(<App />);
+      await waitFor(() => expect(fetch).toHaveBeenCalledTimes(2));
+      expect(fetch).toHaveBeenNthCalledWith(
+        2,
+        `/api/emotions/${selectedDate}`,
+        expect.objectContaining({
+          method: "PUT",
+          body: JSON.stringify(payload),
+          headers: { "Content-Type": "application/json" }
+        })
+      );
 
-    await user.click(await screen.findByRole("button", { name: "情绪" }));
-    await user.click(screen.getByRole("radio", { name: "🙂 还行" }));
-    await user.type(screen.getByRole("textbox", { name: "一句话总结" }), payload.shortNote);
-    await user.click(screen.getByRole("button", { name: "展开详细内容" }));
-    await user.type(screen.getByRole("textbox", { name: "详细内容" }), payload.detail);
-    await user.click(screen.getByRole("button", { name: "保存这一天" }));
-
-    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(2));
-    expect(fetch).toHaveBeenNthCalledWith(
-      2,
-      `/api/emotions/${today}`,
-      expect.objectContaining({
-        method: "PUT",
-        body: JSON.stringify(payload),
-        headers: { "Content-Type": "application/json" }
-      })
-    );
-
-    await user.click(screen.getByRole("button", { name: "列表" }));
-    expect(
-      await screen.findByRole("button", { name: `${today} 🙂 ${payload.shortNote}` })
-    ).toBeInTheDocument();
+      await user.click(screen.getByRole("button", { name: "列表" }));
+      expect(await screen.findByRole("button", { name: `${selectedDate} 🙂 ${payload.shortNote}` })).toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("shows templates on the dedicated templates page instead of the workbench", async () => {
