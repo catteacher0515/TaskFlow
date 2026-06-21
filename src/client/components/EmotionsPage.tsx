@@ -68,7 +68,7 @@ export function EmotionsPage({
     setShortNote(selectedEntry?.shortNote ?? "");
     setDetail(selectedEntry?.detail ?? "");
     setDetailExpanded(Boolean(selectedEntry?.detail));
-  }, [selectedEntry]);
+  }, [selectedDate, selectedEntry]);
 
   function handleMonthChange(nextMonth: string) {
     if (!isMonthValue(nextMonth)) {

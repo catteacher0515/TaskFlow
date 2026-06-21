@@ -642,6 +642,33 @@ describe("App", () => {
     expect(screen.getByRole("textbox", { name: "详细内容" })).toHaveValue("");
   });
 
+  it("clears draft fields when switching between two days without entries", async () => {
+    const user = userEvent.setup();
+    const firstEmptyDay = buildRelativeDateInput(-1);
+    const secondEmptyDay = buildRelativeDateInput(-2);
+
+    render(<App />);
+
+    await user.click(await screen.findByRole("button", { name: "情绪" }));
+    fireEvent.change(screen.getByLabelText("情绪日期"), { target: { value: firstEmptyDay } });
+
+    await user.click(screen.getByRole("radio", { name: "🙂 还行" }));
+    await user.type(screen.getByRole("textbox", { name: "一句话总结" }), "第一天的临时草稿");
+    await user.click(screen.getByRole("button", { name: "展开详细内容" }));
+    await user.type(screen.getByRole("textbox", { name: "详细内容" }), "第一天的详细草稿");
+
+    fireEvent.change(screen.getByLabelText("情绪日期"), { target: { value: secondEmptyDay } });
+
+    expect(screen.getByRole("radio", { name: "🙂 还行" })).not.toBeChecked();
+    expect(screen.getByRole("textbox", { name: "一句话总结" })).toHaveValue("");
+    expect(screen.getByRole("button", { name: "展开详细内容" })).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByRole("textbox", { name: "详细内容" })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "展开详细内容" }));
+
+    expect(screen.getByRole("textbox", { name: "详细内容" })).toHaveValue("");
+  });
+
   it("hydrates the editor when selecting a day with an existing entry", async () => {
     const user = userEvent.setup();
     const today = buildRelativeDateInput(0);
