@@ -11,6 +11,7 @@ import {
   fetchState,
   hideProjectApi,
   revokeActivityApi,
+  upsertEmotionEntryApi,
   updateHabitApi,
   reopenProjectApi,
   selectFocusProjectApi,
@@ -22,6 +23,7 @@ import {
   updateProjectStatusApi
 } from "./api";
 import { CurrentPanel } from "./components/CurrentPanel";
+import { EmotionsPage } from "./components/EmotionsPage";
 import { FeedbackPage } from "./components/FeedbackPage";
 import { FocusModePanel } from "./components/FocusModePanel";
 import { HabitsPage } from "./components/HabitsPage";
@@ -34,11 +36,12 @@ import "./styles.css";
 import type { AppState, HabitPeriod, ProjectStatus, TaskNodeStatus } from "../shared/types";
 import { hasParallelLimitGate } from "../shared/parallelLimitGate";
 
-type AppView = "workbench" | "new" | "templates" | "feedback" | "habits";
+type AppView = "workbench" | "new" | "templates" | "feedback" | "habits" | "emotions";
 
 const navItems: Array<{ id: AppView; label: string }> = [
   { id: "workbench", label: "工作台" },
   { id: "new", label: "新建任务" },
+  { id: "emotions", label: "情绪" },
   { id: "habits", label: "习惯" },
   { id: "templates", label: "模板" },
   { id: "feedback", label: "反馈" }
@@ -216,6 +219,21 @@ export function App() {
     });
   }
 
+  function handleUpsertEmotionEntry(input: {
+    date: string;
+    emoji: string;
+    shortNote: string;
+    detail: string;
+  }) {
+    return runMutation(() => upsertEmotionEntryApi(input.date, {
+      emoji: input.emoji,
+      shortNote: input.shortNote,
+      detail: input.detail
+    }), {
+      nextView: "emotions"
+    });
+  }
+
   function handleCreateProgressObject(projectId: string, title: string, fields: Record<string, string>) {
     return runMutation(() => createProgressObject(projectId, { title, fields }));
   }
@@ -371,6 +389,12 @@ export function App() {
             onArchiveHabit={handleArchiveHabit}
             onUpdateHabit={handleUpdateHabit}
           />
+        </div>
+      ) : null}
+
+      {state && view === "emotions" ? (
+        <div className="single-layout">
+          <EmotionsPage state={state} onUpsertEmotionEntry={handleUpsertEmotionEntry} />
         </div>
       ) : null}
     </main>

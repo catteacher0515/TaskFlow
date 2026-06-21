@@ -429,6 +429,18 @@ describe("App", () => {
     expect(screen.getByText("历史漏项")).toBeInTheDocument();
   });
 
+  it("shows an emotions page from the main navigation", async () => {
+    const user = userEvent.setup();
+
+    render(<App />);
+
+    await user.click(await screen.findByRole("button", { name: "情绪" }));
+
+    expect(screen.getByRole("heading", { name: "情绪" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "月历" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "列表" })).toBeInTheDocument();
+  });
+
   it("shows today due habits and missed habit items", async () => {
     const user = userEvent.setup();
     mockState({
