@@ -220,12 +220,12 @@ async function writeJsonFile(filePath: string, value: unknown) {
   await mkdir(path.dirname(filePath), { recursive: true });
   const tempPath = path.join(path.dirname(filePath), `.${path.basename(filePath)}.${process.pid}.${Date.now()}.tmp`);
 
-  await writeFile(tempPath, formatJsonFileContent(value), "utf8");
+  await writeFile(tempPath, `${JSON.stringify(value, null, 2)}\n`, "utf8");
   await rename(tempPath, filePath);
 }
 
 async function writeIfMissing(filePath: string, value: unknown) {
-  const content = typeof value === "string" ? value : formatJsonFileContent(value);
+  const content = typeof value === "string" ? value : `${JSON.stringify(value, null, 2)}\n`;
 
   try {
     await writeFile(filePath, content, { encoding: "utf8", flag: "wx" });
@@ -239,12 +239,4 @@ async function writeIfMissing(filePath: string, value: unknown) {
 
 function isFileExistsError(error: unknown): error is NodeJS.ErrnoException {
   return error instanceof Error && "code" in error && error.code === "EEXIST";
-}
-
-function formatJsonFileContent(value: unknown) {
-  if (Array.isArray(value) && value.length === 0) {
-    return "[\n]\n";
-  }
-
-  return `${JSON.stringify(value, null, 2)}\n`;
 }

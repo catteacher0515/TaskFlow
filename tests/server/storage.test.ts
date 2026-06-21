@@ -58,15 +58,15 @@ describe("local file storage", () => {
 
     await initializeDataDir(root);
     const state = await readState(root);
+    const rawEmotionEntries = await readFile(path.join(dataDir(root), "emotion-entries.json"), "utf8");
 
     expect(state.emotionEntries).toEqual([]);
-    expect(await readFile(path.join(dataDir(root), "emotion-entries.json"), "utf8")).toBe("[\n]\n");
+    expect(JSON.parse(rawEmotionEntries)).toEqual([]);
   });
 
   it("reads persisted emotion entries from local storage", async () => {
     const root = await makeRoot();
-    await initializeDataDir(root);
-    await writeEmotionEntries(root, [
+    const entries = [
       {
         date: "2026-06-20",
         emoji: "🙂",
@@ -74,9 +74,13 @@ describe("local file storage", () => {
         createdAt: "2026-06-20T14:00:00.000Z",
         updatedAt: "2026-06-20T14:00:00.000Z"
       }
-    ]);
+    ];
+
+    await initializeDataDir(root);
+    await writeEmotionEntries(root, entries);
 
     const state = await readState(root);
+    const rawEmotionEntries = await readFile(path.join(dataDir(root), "emotion-entries.json"), "utf8");
 
     expect(state.emotionEntries).toContainEqual(
       expect.objectContaining({
@@ -85,6 +89,7 @@ describe("local file storage", () => {
         shortNote: "缓过来了"
       })
     );
+    expect(JSON.parse(rawEmotionEntries)).toEqual(entries);
   });
 
   it("uses DATA_DIR when provided", async () => {
