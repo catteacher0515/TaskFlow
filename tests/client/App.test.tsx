@@ -501,6 +501,69 @@ describe("App", () => {
     expect(within(list).getByText("😐")).toBeInTheDocument();
   });
 
+  it("keeps the short note draft when changing the viewed month", async () => {
+    const user = userEvent.setup();
+
+    render(<App />);
+
+    await user.click(await screen.findByRole("button", { name: "情绪" }));
+
+    const shortNoteInput = screen.getByRole("textbox", { name: "一句话总结" });
+    await user.type(shortNoteInput, "还没写完的草稿");
+
+    const monthInput = screen.getByLabelText("查看月份");
+    fireEvent.change(monthInput, { target: { value: buildRelativeDateInput(-31).slice(0, 7) } });
+
+    expect(monthInput).toHaveValue(buildRelativeDateInput(-31).slice(0, 7));
+    expect(shortNoteInput).toHaveValue("还没写完的草稿");
+  });
+
+  it("exposes simple pressed and expanded semantics on the emotions page", async () => {
+    const user = userEvent.setup();
+    const today = buildRelativeDateInput(0);
+    const yesterday = buildRelativeDateInput(-1);
+    mockState({
+      ...appState,
+      emotionEntries: [
+        {
+          date: today,
+          emoji: "😄",
+          createdAt: buildRelativeCreatedAt(0),
+          updatedAt: buildRelativeCreatedAt(0)
+        },
+        {
+          date: yesterday,
+          emoji: "😐",
+          shortNote: "昨天一般",
+          createdAt: buildRelativeCreatedAt(-1),
+          updatedAt: buildRelativeCreatedAt(-1)
+        }
+      ]
+    });
+
+    render(<App />);
+
+    await user.click(await screen.findByRole("button", { name: "情绪" }));
+
+    const calendarGrid = screen.getByRole("grid", { name: "情绪月历" });
+    expect(within(calendarGrid).getByRole("button", { name: `${today} 😄` })).toHaveAttribute("aria-pressed", "true");
+    expect(within(calendarGrid).queryByRole("gridcell")).not.toBeInTheDocument();
+
+    const detailToggle = screen.getByRole("button", { name: "展开详细内容" });
+    expect(detailToggle).toHaveAttribute("aria-expanded", "false");
+
+    await user.click(detailToggle);
+
+    expect(screen.getByRole("button", { name: "收起详细内容" })).toHaveAttribute("aria-expanded", "true");
+
+    await user.click(screen.getByRole("button", { name: "列表" }));
+
+    const yesterdayRow = screen.getByRole("button", { name: `${yesterday} 😐 昨天一般` });
+    await user.click(yesterdayRow);
+
+    expect(yesterdayRow).toHaveAttribute("aria-pressed", "true");
+  });
+
   it("shows today due habits and missed habit items", async () => {
     const user = userEvent.setup();
     mockState({

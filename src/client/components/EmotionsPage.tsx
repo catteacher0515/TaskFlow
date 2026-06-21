@@ -30,6 +30,14 @@ function buildMonthStart(month: string) {
   return `${month}-01`;
 }
 
+function isMonthValue(value: string) {
+  return /^\d{4}-\d{2}$/.test(value);
+}
+
+function isDateValue(value: string) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(value);
+}
+
 export function EmotionsPage({
   state,
   onUpsertEmotionEntry
@@ -67,13 +75,18 @@ export function EmotionsPage({
   }, [selectedEntry]);
 
   function handleMonthChange(nextMonth: string) {
-    setMonth(nextMonth);
-    if (!selectedDate.startsWith(nextMonth)) {
-      setSelectedDate(buildMonthStart(nextMonth));
+    if (!isMonthValue(nextMonth)) {
+      return;
     }
+
+    setMonth(nextMonth);
   }
 
   function handleDateSelect(nextDate: string) {
+    if (!isDateValue(nextDate)) {
+      return;
+    }
+
     setSelectedDate(nextDate);
     if (!nextDate.startsWith(month)) {
       setMonth(nextDate.slice(0, 7));
@@ -155,13 +168,13 @@ export function EmotionsPage({
                 <button
                   key={day.date}
                   type="button"
-                  role="gridcell"
                   className={[
                     "emotion-day",
                     day.selected ? "selected" : "",
                     day.inMonth ? "" : "outside-month"
                   ].filter(Boolean).join(" ")}
                   aria-label={day.emoji ? `${day.date} ${day.emoji}` : day.date}
+                  aria-pressed={day.selected}
                   onClick={() => handleDateSelect(day.date)}
                 >
                   <span className="emotion-day-number">{day.dayOfMonth}</span>
@@ -179,6 +192,7 @@ export function EmotionsPage({
                 <button
                   type="button"
                   className={`emotion-list-row${entry.date === selectedDate ? " selected" : ""}`}
+                  aria-pressed={entry.date === selectedDate}
                   onClick={() => handleDateSelect(entry.date)}
                 >
                   <span className="emotion-list-date">{entry.date}</span>
@@ -239,6 +253,8 @@ export function EmotionsPage({
           <button
             type="button"
             className="secondary-action compact"
+            aria-expanded={detailExpanded}
+            aria-controls="emotion-detail-field"
             onClick={() => setDetailExpanded((current) => !current)}
           >
             {detailExpanded ? "收起详细内容" : "展开详细内容"}
@@ -249,6 +265,7 @@ export function EmotionsPage({
           <label>
             <span>详细内容</span>
             <textarea
+              id="emotion-detail-field"
               aria-label="详细内容"
               rows={5}
               value={detail}
