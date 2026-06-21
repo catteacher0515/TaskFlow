@@ -13,11 +13,11 @@ export interface EmotionsPageProps {
   }) => Promise<void>;
 }
 
-export function EmotionsPage({ state, onUpsertEmotionEntry }: EmotionsPageProps) {
+export function EmotionsPage({
+  state: _state,
+  onUpsertEmotionEntry: _onUpsertEmotionEntry
+}: EmotionsPageProps) {
   const [viewMode, setViewMode] = useState<EmotionViewMode>("calendar");
-
-  void state;
-  void onUpsertEmotionEntry;
 
   return (
     <section className="page-heading" aria-labelledby="emotions-page-title">
@@ -25,7 +25,8 @@ export function EmotionsPage({ state, onUpsertEmotionEntry }: EmotionsPageProps)
         <p className="eyebrow">情绪记录</p>
         <h2 id="emotions-page-title">情绪</h2>
       </div>
-      <div className="segmented-control" aria-label="情绪视图切换">
+      {/* TODO: Task 7 will render the actual emotion calendar/list content below. */}
+      <div className="filter-row" role="group" aria-label="情绪视图切换">
         <button
           type="button"
           aria-pressed={viewMode === "calendar"}
