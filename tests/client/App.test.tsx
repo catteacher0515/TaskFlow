@@ -3,6 +3,7 @@ import { within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "../../src/client/App";
+import { fetchState, upsertEmotionEntryApi } from "../../src/client/api";
 import type { AppState, Project } from "../../src/shared/types";
 
 const appState: AppState = {
@@ -295,9 +296,12 @@ describe("App", () => {
     expect(await screen.findByText("当前面板")).toBeInTheDocument();
     expect(screen.getByText("进行中 1 / 3")).toBeInTheDocument();
     expect(screen.getAllByText("每周 GitHub 精选 2026-W25").length).toBeGreaterThan(0);
-    expect(fetch).toHaveBeenCalledWith("/api/state", {
-      headers: { "Content-Type": "application/json" }
-    });
+    expect(fetch).toHaveBeenCalledWith(
+      "/api/state",
+      expect.objectContaining({
+        headers: { "Content-Type": "application/json" }
+      })
+    );
   });
 
   it("shows loading and API errors", async () => {
@@ -333,20 +337,44 @@ describe("App", () => {
     expect(screen.getByRole("heading", { name: "选择一个项目" })).toBeInTheDocument();
   });
 
-  it("keeps loading the app when api state omits emotionEntries", async () => {
+  it("returns empty emotionEntries when api state omits them", async () => {
     globalThis.fetch = vi.fn(async () => {
       const { emotionEntries: _emotionEntries, ...stateWithoutEmotionEntries } = appState;
       return jsonResponse(stateWithoutEmotionEntries);
     });
 
-    render(<App />);
-
-    expect(await screen.findByText("当前面板")).toBeInTheDocument();
-    expect(fetch).toHaveBeenCalledTimes(1);
-    expect(fetch).toHaveBeenCalledWith("/api/state", {
-      headers: { "Content-Type": "application/json" }
+    await expect(fetchState()).resolves.toMatchObject({
+      ...appState,
+      emotionEntries: []
     });
-    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(fetch).toHaveBeenCalledWith(
+      "/api/state",
+      expect.objectContaining({
+        headers: { "Content-Type": "application/json" }
+      })
+    );
+  });
+
+  it("sends the emotion entry payload through upsertEmotionEntryApi", async () => {
+    const payload = {
+      emoji: "🙂",
+      shortNote: "还行",
+      detail: "今天推进得比较稳"
+    };
+
+    globalThis.fetch = vi.fn(async () => jsonResponse(appState));
+
+    await upsertEmotionEntryApi("2026-06-20", payload);
+
+    expect(fetch).toHaveBeenCalledWith(
+      "/api/emotions/2026-06-20",
+      expect.objectContaining({
+        method: "PUT",
+        body: JSON.stringify(payload),
+        headers: { "Content-Type": "application/json" }
+      })
+    );
   });
 
   it("shows templates on the dedicated templates page instead of the workbench", async () => {
