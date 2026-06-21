@@ -441,6 +441,66 @@ describe("App", () => {
     expect(screen.getByRole("button", { name: "列表" })).toBeInTheDocument();
   });
 
+  it("shows month view by default and displays only emoji in the calendar grid", async () => {
+    const user = userEvent.setup();
+    mockState({
+      ...appState,
+      emotionEntries: [
+        {
+          date: buildRelativeDateInput(0),
+          emoji: "😄",
+          shortNote: "今天顺了",
+          detail: "下午推进感很好",
+          createdAt: buildRelativeCreatedAt(0),
+          updatedAt: buildRelativeCreatedAt(0)
+        }
+      ]
+    });
+
+    render(<App />);
+
+    await user.click(await screen.findByRole("button", { name: "情绪" }));
+
+    const calendarButton = screen.getByRole("button", { name: "月历" });
+    expect(calendarButton).toHaveAttribute("aria-pressed", "true");
+
+    const calendarGrid = screen.getByRole("grid", { name: "情绪月历" });
+    expect(within(calendarGrid).getByText("😄")).toBeInTheDocument();
+    expect(within(calendarGrid).queryByText("今天顺了")).not.toBeInTheDocument();
+  });
+
+  it("shows emoji plus short note in list view and falls back to emoji only", async () => {
+    const user = userEvent.setup();
+    mockState({
+      ...appState,
+      emotionEntries: [
+        {
+          date: buildRelativeDateInput(0),
+          emoji: "😄",
+          shortNote: "今天顺了",
+          detail: "下午推进感很好",
+          createdAt: buildRelativeCreatedAt(0),
+          updatedAt: buildRelativeCreatedAt(0)
+        },
+        {
+          date: buildRelativeDateInput(-1),
+          emoji: "😐",
+          createdAt: buildRelativeCreatedAt(-1),
+          updatedAt: buildRelativeCreatedAt(-1)
+        }
+      ]
+    });
+
+    render(<App />);
+
+    await user.click(await screen.findByRole("button", { name: "情绪" }));
+    await user.click(screen.getByRole("button", { name: "列表" }));
+
+    const list = screen.getByRole("list", { name: "情绪列表" });
+    expect(within(list).getByText("😄 今天顺了")).toBeInTheDocument();
+    expect(within(list).getByText("😐")).toBeInTheDocument();
+  });
+
   it("shows today due habits and missed habit items", async () => {
     const user = userEvent.setup();
     mockState({
