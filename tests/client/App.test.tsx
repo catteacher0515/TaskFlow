@@ -536,6 +536,80 @@ describe("App", () => {
     expect(detailInput).toHaveValue("还没写完的详细草稿");
   });
 
+  it("collapses detail by default when selecting a new day without an entry", async () => {
+    const user = userEvent.setup();
+    const today = buildRelativeDateInput(0);
+    const yesterday = buildRelativeDateInput(-1);
+    mockState({
+      ...appState,
+      emotionEntries: [
+        {
+          date: today,
+          emoji: "😄",
+          shortNote: "今天顺了",
+          detail: "下午推进感很好",
+          createdAt: buildRelativeCreatedAt(0),
+          updatedAt: buildRelativeCreatedAt(0)
+        }
+      ]
+    });
+
+    render(<App />);
+
+    await user.click(await screen.findByRole("button", { name: "情绪" }));
+
+    expect(screen.getByRole("button", { name: "收起详细内容" })).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByRole("textbox", { name: "详细内容" })).toHaveValue("下午推进感很好");
+
+    fireEvent.change(screen.getByLabelText("情绪日期"), { target: { value: yesterday } });
+
+    expect(screen.getByRole("button", { name: "展开详细内容" })).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByRole("textbox", { name: "详细内容" })).not.toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "一句话总结" })).toHaveValue("");
+  });
+
+  it("hydrates the editor when selecting a day with an existing entry", async () => {
+    const user = userEvent.setup();
+    const today = buildRelativeDateInput(0);
+    const yesterday = buildRelativeDateInput(-1);
+    mockState({
+      ...appState,
+      emotionEntries: [
+        {
+          date: today,
+          emoji: "😄",
+          shortNote: "今天顺了",
+          detail: "下午推进感很好",
+          createdAt: buildRelativeCreatedAt(0),
+          updatedAt: buildRelativeCreatedAt(0)
+        },
+        {
+          date: yesterday,
+          emoji: "😐",
+          shortNote: "昨天一般",
+          detail: "开会太多，节奏被打断",
+          createdAt: buildRelativeCreatedAt(-1),
+          updatedAt: buildRelativeCreatedAt(-1)
+        }
+      ]
+    });
+
+    render(<App />);
+
+    await user.click(await screen.findByRole("button", { name: "情绪" }));
+
+    await user.clear(screen.getByRole("textbox", { name: "一句话总结" }));
+    await user.type(screen.getByRole("textbox", { name: "一句话总结" }), "临时草稿");
+    await user.clear(screen.getByRole("textbox", { name: "详细内容" }));
+    await user.type(screen.getByRole("textbox", { name: "详细内容" }), "临时详情");
+
+    fireEvent.change(screen.getByLabelText("情绪日期"), { target: { value: yesterday } });
+
+    expect(screen.getByRole("textbox", { name: "一句话总结" })).toHaveValue("昨天一般");
+    expect(screen.getByRole("button", { name: "收起详细内容" })).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByRole("textbox", { name: "详细内容" })).toHaveValue("开会太多，节奏被打断");
+  });
+
   it("exposes simple pressed and expanded semantics on the emotions page", async () => {
     const user = userEvent.setup();
     const today = buildRelativeDateInput(0);
