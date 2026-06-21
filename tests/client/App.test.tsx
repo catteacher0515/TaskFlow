@@ -377,6 +377,66 @@ describe("App", () => {
     );
   });
 
+  it("saves the selected day's emotion entry from the UI and reflects it in list view", async () => {
+    const user = userEvent.setup();
+    const today = buildRelativeDateInput(0);
+    const payload = {
+      emoji: "🙂",
+      shortNote: "把提交链路补上了",
+      detail: "从页面触发保存，并在列表里确认回显"
+    };
+    const savedState: AppState = {
+      ...appState,
+      emotionEntries: [
+        {
+          date: today,
+          ...payload,
+          createdAt: buildRelativeCreatedAt(0),
+          updatedAt: buildRelativeCreatedAt(0)
+        }
+      ]
+    };
+
+    globalThis.fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const path = typeof input === "string" ? input : input.toString();
+
+      if (path === "/api/state") {
+        return jsonResponse(appState);
+      }
+
+      if (path === `/api/emotions/${today}`) {
+        return jsonResponse(savedState);
+      }
+
+      throw new Error(`Unexpected request: ${path}`);
+    });
+
+    render(<App />);
+
+    await user.click(await screen.findByRole("button", { name: "情绪" }));
+    await user.click(screen.getByRole("radio", { name: "🙂 还行" }));
+    await user.type(screen.getByRole("textbox", { name: "一句话总结" }), payload.shortNote);
+    await user.click(screen.getByRole("button", { name: "展开详细内容" }));
+    await user.type(screen.getByRole("textbox", { name: "详细内容" }), payload.detail);
+    await user.click(screen.getByRole("button", { name: "保存这一天" }));
+
+    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(2));
+    expect(fetch).toHaveBeenNthCalledWith(
+      2,
+      `/api/emotions/${today}`,
+      expect.objectContaining({
+        method: "PUT",
+        body: JSON.stringify(payload),
+        headers: { "Content-Type": "application/json" }
+      })
+    );
+
+    await user.click(screen.getByRole("button", { name: "列表" }));
+    expect(
+      await screen.findByRole("button", { name: `${today} 🙂 ${payload.shortNote}` })
+    ).toBeInTheDocument();
+  });
+
   it("shows templates on the dedicated templates page instead of the workbench", async () => {
     const user = userEvent.setup();
     mockState({
