@@ -1194,13 +1194,14 @@ describe("App", () => {
 
     expect(screen.getByText(buildWeekGroupLabel(0, 2))).toBeInTheDocument();
     expect(screen.getByText(buildWeekGroupLabel(-7, 1))).toBeInTheDocument();
-    expect(screen.getByText(buildWeekGroupLabel(-20, 2))).toBeInTheDocument();
+    expect(screen.getByText(buildWeekGroupLabel(-20, 1))).toBeInTheDocument();
+    expect(screen.getByText(buildWeekGroupLabel(-21, 1))).toBeInTheDocument();
     expect(screen.queryByText(buildDayGroupLabel(0, 1))).not.toBeInTheDocument();
 
     await user.click(within(groupingRow).getByRole("button", { name: "按月" }));
 
-    expect(screen.getByText(buildMonthGroupLabel(0, 3))).toBeInTheDocument();
-    expect(screen.getByText(buildMonthGroupLabel(-20, 2))).toBeInTheDocument();
+    expect(screen.getByText(buildMonthGroupLabel(0, 4))).toBeInTheDocument();
+    expect(screen.getByText(buildMonthGroupLabel(-21, 1))).toBeInTheDocument();
     expect(screen.queryByText(buildWeekGroupLabel(0, 2))).not.toBeInTheDocument();
   });
 
