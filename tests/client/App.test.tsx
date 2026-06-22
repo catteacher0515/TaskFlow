@@ -281,6 +281,20 @@ describe("App", () => {
     return `${dateLabel} · ${count} 条`;
   }
 
+  function buildExpectedGroupLabels(
+    daysOffsets: number[],
+    buildLabel: (daysOffset: number, count: number) => string
+  ) {
+    const counts = new Map<string, number>();
+
+    for (const daysOffset of daysOffsets) {
+      const labelPrefix = buildLabel(daysOffset, 0).replace(/0 条$/, "");
+      counts.set(labelPrefix, (counts.get(labelPrefix) ?? 0) + 1);
+    }
+
+    return [...counts.entries()].map(([labelPrefix, count]) => `${labelPrefix}${count} 条`);
+  }
+
   beforeEach(() => {
     mockState();
   });
@@ -1167,6 +1181,9 @@ describe("App", () => {
 
   it("groups feedback by day, week, and month", async () => {
     const user = userEvent.setup();
+    const offsets = [0, -1, -7, -20, -21];
+    const expectedWeekLabels = buildExpectedGroupLabels(offsets, buildWeekGroupLabel);
+    const expectedMonthLabels = buildExpectedGroupLabels(offsets, buildMonthGroupLabel);
 
     mockState({
       ...appState,
@@ -1219,17 +1236,19 @@ describe("App", () => {
     const groupingRow = screen.getByLabelText("反馈分组");
     await user.click(within(groupingRow).getByRole("button", { name: "按周" }));
 
-    expect(screen.getByText(buildWeekGroupLabel(0, 2))).toBeInTheDocument();
-    expect(screen.getByText(buildWeekGroupLabel(-7, 1))).toBeInTheDocument();
-    expect(screen.getByText(buildWeekGroupLabel(-20, 1))).toBeInTheDocument();
-    expect(screen.getByText(buildWeekGroupLabel(-21, 1))).toBeInTheDocument();
+    expectedWeekLabels.forEach((label) => {
+      expect(screen.getByText(label)).toBeInTheDocument();
+    });
     expect(screen.queryByText(buildDayGroupLabel(0, 1))).not.toBeInTheDocument();
 
     await user.click(within(groupingRow).getByRole("button", { name: "按月" }));
 
-    expect(screen.getByText(buildMonthGroupLabel(0, 4))).toBeInTheDocument();
-    expect(screen.getByText(buildMonthGroupLabel(-21, 1))).toBeInTheDocument();
-    expect(screen.queryByText(buildWeekGroupLabel(0, 2))).not.toBeInTheDocument();
+    expectedMonthLabels.forEach((label) => {
+      expect(screen.getByText(label)).toBeInTheDocument();
+    });
+    expectedWeekLabels.forEach((label) => {
+      expect(screen.queryByText(label)).not.toBeInTheDocument();
+    });
   });
 
   it("deletes a feedback item from the feedback page after confirmation", async () => {
@@ -2671,6 +2690,81 @@ describe("App", () => {
     expect(screen.getAllByText("whisper").length).toBeGreaterThan(1);
     expect(screen.getByRole("checkbox", { name: "llms.txt" })).toBeChecked();
     expect(screen.getByRole("checkbox", { name: "whisper" })).toBeChecked();
+  });
+
+  it("adds custom publish tasks to weekly GitHub projects", async () => {
+    const user = userEvent.setup();
+    const rootTask = appState.projects[0].taskTree;
+
+    if (!rootTask) {
+      throw new Error("weekly test fixture is missing task tree");
+    }
+
+    const nextProject = {
+      ...appState.projects[0],
+      taskTree: {
+        ...rootTask,
+        children: rootTask.children.map((task) =>
+          task.id === "project-1-publish"
+            ? {
+                ...task,
+                children: [
+                  ...task.children,
+                  {
+                    id: "project-1-publish-7",
+                    title: "公众号",
+                    status: "not_started" as const,
+                    children: [],
+                    createdAt: "2026-06-15T12:00:00.000Z",
+                    updatedAt: "2026-06-15T12:00:00.000Z"
+                  }
+                ],
+                updatedAt: "2026-06-15T12:00:00.000Z"
+              }
+            : task
+        )
+      }
+    };
+    const nextState = {
+      ...appState,
+      projects: [nextProject, appState.projects[1]]
+    };
+
+    globalThis.fetch = vi.fn(async (input, init) => {
+      const path = String(input);
+      if (path === "/api/state") {
+        return jsonResponse(appState);
+      }
+      if (path === "/api/projects/project-1/tasks/project-1-publish/children") {
+        expect(init).toMatchObject({
+          method: "POST",
+          body: JSON.stringify({ title: "公众号" })
+        });
+        return jsonResponse(nextState);
+      }
+      return jsonResponse(appState);
+    });
+
+    render(<App />);
+
+    const publishInput = await screen.findByLabelText("添加到发布");
+    const publishForm = publishInput.closest("form");
+
+    if (!publishForm) {
+      throw new Error("publish add form is missing");
+    }
+
+    await user.type(publishInput, "公众号");
+    await user.click(within(publishForm).getByRole("button", { name: "添加小任务" }));
+
+    expect(fetch).toHaveBeenCalledWith(
+      "/api/projects/project-1/tasks/project-1-publish/children",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ title: "公众号" })
+      })
+    );
+    expect(await screen.findByText("公众号")).toBeInTheDocument();
   });
 
   it("allows completing the derived weekly pick task itself", async () => {

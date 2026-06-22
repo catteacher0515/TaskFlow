@@ -126,7 +126,7 @@ function dedupeTasks(tasks: TaskNode[]) {
 }
 
 function mergePublishChildren(defaultChildren: TaskNode[], existingChildren: TaskNode[]) {
-  return defaultChildren.map((defaultChild) => {
+  const mergedDefaultChildren = defaultChildren.map((defaultChild) => {
     const match = existingChildren.find((child) => child.title === defaultChild.title);
     if (!match) {
       return defaultChild;
@@ -141,6 +141,16 @@ function mergePublishChildren(defaultChildren: TaskNode[], existingChildren: Tas
       updatedAt: match.updatedAt
     };
   });
+
+  const defaultTitles = new Set(defaultChildren.map((child) => child.title));
+  const customChildren = existingChildren
+    .filter((child) => !defaultTitles.has(child.title))
+    .map((child) => ({
+      ...child,
+      children: sanitizeChildren(child.children)
+    }));
+
+  return [...mergedDefaultChildren, ...customChildren];
 }
 
 function mapLegacyProgressObjects(project: Project): TaskNode[] {

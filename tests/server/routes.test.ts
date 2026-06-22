@@ -595,6 +595,45 @@ describe("Express API routes", () => {
     expect(revisedResponse.body.activity).toHaveLength(1);
   });
 
+  it("keeps custom publish tasks on weekly GitHub projects", async () => {
+    const { app } = await makeFixture(["project-1", "task-1"]);
+    await request(app)
+      .post("/api/projects")
+      .send({
+        templateId: "weekly-github-picks",
+        title: "每周 GitHub 精选 2026-W25",
+        recurrence: { kind: "weekly" }
+      })
+      .expect(201);
+
+    const addResponse = await request(app)
+      .post("/api/projects/project-1/tasks/project-1-publish/children")
+      .send({ title: "公众号" })
+      .expect(200);
+
+    expect(addResponse.body.projects[0].taskTree.children[3].children.map((task: { title: string }) => task.title)).toEqual([
+      "抖音",
+      "知乎",
+      "B站",
+      "小红书",
+      "编程导航",
+      "稀土掘金",
+      "公众号"
+    ]);
+
+    const stateResponse = await request(app).get("/api/state").expect(200);
+
+    expect(stateResponse.body.projects[0].taskTree.children[3].children.map((task: { title: string }) => task.title)).toEqual([
+      "抖音",
+      "知乎",
+      "B站",
+      "小红书",
+      "编程导航",
+      "稀土掘金",
+      "公众号"
+    ]);
+  });
+
   it("renames and deletes a non-root task", async () => {
     const { app } = await makeFixture(["project-1", "task-1"]);
     await request(app)
